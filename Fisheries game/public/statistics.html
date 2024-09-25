@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player Statistics</title>
+</head>
+<body>
+  <h1>Player Statistics</h1>
+  <select id="playerSelect" onchange="fetchPlayerData()">
+    <option value="">Select a player</option>
+  </select>
+  <div id="playerData"></div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+      fetch('/api/players')
+        .then(response => response.json())
+        .then(data => {
+          const select = document.getElementById('playerSelect');
+          data.players.forEach(player => {
+            const option = document.createElement('option');
+            option.value = player.id;
+            option.textContent = `${player.username} - ${player.timestamp}`;
+            select.appendChild(option);
+          });
+
+          const urlParams = new URLSearchParams(window.location.search);
+          const autoSelectId = urlParams.get('autoSelectId');
+          if (autoSelectId) {
+            select.value = autoSelectId;
+            fetchPlayerData();
+          }
+        });
+    });
+
+    function fetchPlayerData() {
+      const select = document.getElementById('playerSelect');
+      const playerId = select.value;
+      if (playerId) {
+        fetch(`/api/players/${playerId}`)
+          .then(response => response.json())
+          .then(data => {
+            const playerData = document.getElementById('playerData');
+            playerData.textContent = JSON.stringify(data.player);
+          });
+      } else {
+        document.getElementById('playerData').textContent = '';
+      }
+    }
+  </script>
+</body>
+</html>

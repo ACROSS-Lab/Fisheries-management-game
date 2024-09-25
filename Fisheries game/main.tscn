@@ -1,0 +1,136 @@
+[gd_scene load_steps=10 format=3 uid="uid://68qbdc3vr80h"]
+
+[ext_resource type="Script" path="res://main.gd" id="1_qw8ii"]
+[ext_resource type="PackedScene" uid="uid://dwkiucj6kxdp6" path="res://player.tscn" id="2_howu5"]
+[ext_resource type="Texture2D" uid="uid://cms20er1dbq0r" path="res://art/viet_coast.png" id="2_iwspy"]
+[ext_resource type="PackedScene" uid="uid://c2r14p1dqpsgi" path="res://hud.tscn" id="2_te7wu"]
+[ext_resource type="Texture2D" uid="uid://d0xxsluvjde4s" path="res://art/port.png" id="3_fq1hd"]
+[ext_resource type="Script" path="res://sea_area.gd" id="3_pg3ew"]
+[ext_resource type="Script" path="res://addons/graph_2d/graph_2d.gd" id="4_5we3b"]
+[ext_resource type="Script" path="res://saver.gd" id="8_exvmx"]
+
+[sub_resource type="NavigationPolygon" id="NavigationPolygon_5gqmk"]
+resource_local_to_scene = true
+vertices = PackedVector2Array(-258, -391, -234, -393, -238, -388, -266, -364, -278, -382, 581, 450, -435, 450, -429, 442, -363, 413, -96, -336, -101, -346, -91, -345, -76, -315, -201, -383, -185, -383, -190, -371, -346, 375, -325, 365, -341, 355, -203, 294, -181, 254, 581, -418, -168, 181, 70, -418, -183, 106, -65, -275, 39, -393, -184, 105, -208, 15, -102, -206, -180, -340, -172, -318, -202, -312, -102, -326, -351, -132, -361, -169, -358, -306, -348, -342, -311, -340, -257, -260, -252, -189, -261, -60, -416, -232, -390, -289, 48, -415, -94, -376, -84, -384, -4, -402, -203, -167, -250, -38, -164, -158, -137, -179, -92, -246)
+polygons = Array[PackedInt32Array]([PackedInt32Array(0, 1, 2, 3, 4), PackedInt32Array(5, 6, 7, 8), PackedInt32Array(9, 10, 11, 12), PackedInt32Array(13, 14, 15), PackedInt32Array(5, 8, 16, 17), PackedInt32Array(16, 18, 17), PackedInt32Array(5, 17, 19), PackedInt32Array(5, 19, 20, 21), PackedInt32Array(21, 20, 22, 23), PackedInt32Array(23, 22, 24), PackedInt32Array(25, 26, 23, 24, 27, 28, 29), PackedInt32Array(30, 31, 32), PackedInt32Array(12, 33, 9), PackedInt32Array(34, 35, 36, 37, 38, 39, 40, 41), PackedInt32Array(35, 42, 43, 36), PackedInt32Array(26, 44, 23), PackedInt32Array(12, 11, 45, 46, 47, 26), PackedInt32Array(25, 12, 26), PackedInt32Array(3, 2, 13, 15, 30, 32, 39), PackedInt32Array(38, 3, 39), PackedInt32Array(41, 40, 48), PackedInt32Array(49, 41, 48, 50, 28), PackedInt32Array(28, 50, 51, 29), PackedInt32Array(25, 29, 52)])
+outlines = Array[PackedVector2Array]([PackedVector2Array(-465, 465, -439, 430, -374, 402, -360, 370, -352, 333, -325, 348, -214, 283, -195, 249, -183, 181, -198, 109, -222, 22, -264, -31, -273, -51, -366, -125, -375, -162, -434, -230, -402, -300, -371, -316, -360, -358, -314, -355, -288, -369, -302, -389, -263, -406, -208, -411, -214, -400, -200, -398, -163, -398, -174, -370, -166, -345, -156, -318, -141, -317, -147, -308, -195, -298, -242, -254, -238, -199, -198, -181, -168, -174, -146, -191, -115, -215, -106, -255, -82, -279, -89, -304, -126, -320, -114, -337, -130, -367, -108, -363, -110, -383, -91, -399, -5, -418, 30, -410, 38, -430, 69, -433, 597, -434, 596, 466)])
+source_geometry_group_name = &"navigation_polygon_source_group"
+agent_radius = 15.0
+
+[node name="Main" type="Node"]
+script = ExtResource("1_qw8ii")
+
+[node name="GameBG" type="ColorRect" parent="."]
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 1800.0
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 85.0
+color = Color(0.475483, 0.807123, 0.963614, 1)
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(600, 450)
+texture = ExtResource("2_iwspy")
+
+[node name="SeaArea" type="NavigationRegion2D" parent="."]
+position = Vector2(603, 434)
+navigation_polygon = SubResource("NavigationPolygon_5gqmk")
+script = ExtResource("3_pg3ew")
+
+[node name="PortSprite" type="Sprite2D" parent="." groups=["ports"]]
+position = Vector2(245, 78)
+scale = Vector2(0.075, 0.075)
+texture = ExtResource("3_fq1hd")
+
+[node name="PortSprite2" type="Sprite2D" parent="." groups=["ports"]]
+position = Vector2(342, 399)
+scale = Vector2(0.075, 0.075)
+texture = ExtResource("3_fq1hd")
+
+[node name="PortSprite3" type="Sprite2D" parent="." groups=["ports"]]
+position = Vector2(412, 560)
+scale = Vector2(0.075, 0.075)
+texture = ExtResource("3_fq1hd")
+
+[node name="PortSprite4" type="Sprite2D" parent="." groups=["ports"]]
+position = Vector2(252, 771)
+scale = Vector2(0.075, 0.075)
+texture = ExtResource("3_fq1hd")
+
+[node name="Player" parent="." instance=ExtResource("2_howu5")]
+
+[node name="HUD" parent="." instance=ExtResource("2_te7wu")]
+
+[node name="StatsLayer" type="CanvasLayer" parent="."]
+layer = 3
+
+[node name="StatBG" type="ColorRect" parent="StatsLayer"]
+visibility_layer = 3
+custom_minimum_size = Vector2(600, 900)
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -600.0
+grow_horizontal = 0
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 35.0
+
+[node name="MarginContainer" type="MarginContainer" parent="StatsLayer"]
+custom_minimum_size = Vector2(600, 900)
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -600.0
+offset_bottom = 900.0
+grow_horizontal = 0
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="GraphContainer" type="VBoxContainer" parent="StatsLayer/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="CaptureGraph" type="Control" parent="StatsLayer/MarginContainer/GraphContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("4_5we3b")
+x_max = 600.0
+y_max = 15.0
+background_color = Color(0.195615, 0.622262, 0.796763, 1)
+grid_horizontal_visible = true
+grid_vertical_visible = true
+
+[node name="ProfitGraph" type="Control" parent="StatsLayer/MarginContainer/GraphContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("4_5we3b")
+x_max = 600.0
+y_min = -6.0
+y_max = 9.0
+background_color = Color(0.195615, 0.622262, 0.796763, 1)
+grid_horizontal_visible = true
+grid_vertical_visible = true
+
+[node name="EndTimer" type="Timer" parent="."]
+wait_time = 600.0
+one_shot = true
+
+[node name="DayTimer" type="Timer" parent="."]
+
+[node name="ScoreTimer" type="Timer" parent="."]
+wait_time = 0.1
+
+[node name="Saver" type="Node" parent="."]
+script = ExtResource("8_exvmx")
+
+[connection signal="buy_ship" from="HUD" to="Player" method="buy_ship"]
+[connection signal="sell_ship" from="HUD" to="Player" method="sell_ship"]
+[connection signal="timeout" from="EndTimer" to="." method="_on_end_timer_timeout"]
+[connection signal="timeout" from="DayTimer" to="." method="_on_day_timer_timeout"]
+[connection signal="timeout" from="ScoreTimer" to="." method="_on_score_timer_timeout"]

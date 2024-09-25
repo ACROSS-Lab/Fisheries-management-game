@@ -1,0 +1,82 @@
+[gd_scene load_steps=4 format=3 uid="uid://cs8vtohmi8lx4"]
+
+[ext_resource type="Texture2D" uid="uid://dtrck8pxil3pt" path="res://art/pecheure.png" id="1_amg8h"]
+[ext_resource type="Script" path="res://main_menu.gd" id="1_m0vob"]
+[ext_resource type="Texture2D" uid="uid://ccywrokyvg0i0" path="res://art/3-posson.png" id="2_iqnr2"]
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_m0vob")
+
+[node name="GameBG" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 1800.0
+offset_bottom = 860.0
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 85.0
+color = Color(0.475483, 0.807123, 0.963614, 1)
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 1760.0
+offset_bottom = 860.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 200
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 100
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 90
+text = "FISHERY MANAGEMENT GAME"
+
+[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 500
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 500
+theme_override_constants/margin_bottom = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 50
+
+[node name="PlayButton" type="Button" parent="MarginContainer/VBoxContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "Play the game"
+
+[node name="StatisticsButton" type="Button" parent="MarginContainer/VBoxContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "View game statistics"
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(1535, 630)
+scale = Vector2(0.213105, 0.213105)
+texture = ExtResource("1_amg8h")
+
+[node name="Sprite2D2" type="Sprite2D" parent="."]
+position = Vector2(190, 617)
+scale = Vector2(0.214718, 0.214718)
+texture = ExtResource("2_iqnr2")
+
+[connection signal="pressed" from="MarginContainer/VBoxContainer/MarginContainer/VBoxContainer/PlayButton" to="." method="_on_play_button_pressed"]
+[connection signal="pressed" from="MarginContainer/VBoxContainer/MarginContainer/VBoxContainer/StatisticsButton" to="." method="_on_statistics_button_pressed"]

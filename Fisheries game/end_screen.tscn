@@ -1,0 +1,149 @@
+[gd_scene load_steps=5 format=3 uid="uid://b8hi3i5uhua78"]
+
+[ext_resource type="Script" path="res://end_screen.gd" id="1_cyc87"]
+[ext_resource type="Texture2D" uid="uid://dtrck8pxil3pt" path="res://art/pecheure.png" id="2_aaytr"]
+[ext_resource type="Texture2D" uid="uid://ccywrokyvg0i0" path="res://art/3-posson.png" id="3_q8i8a"]
+[ext_resource type="Script" path="res://loader.gd" id="4_ux04b"]
+
+[node name="EndScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_cyc87")
+
+[node name="GameBG" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 1800.0
+offset_bottom = 860.0
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 85.0
+color = Color(0.475483, 0.807123, 0.963614, 1)
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 1760.0
+offset_bottom = 860.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 50
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 50
+
+[node name="Header" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 90
+text = "GAME OVER"
+
+[node name="Result" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "Your objective:
+Your result:"
+horizontal_alignment = 1
+
+[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 300
+theme_override_constants/margin_right = 300
+theme_override_constants/margin_bottom = 30
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/MarginContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+
+[node name="StatisticsContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/MarginContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 20
+
+[node name="StatisticsHeader" type="Label" parent="MarginContainer/VBoxContainer/MarginContainer/HBoxContainer/StatisticsContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 50
+text = "Final statistics
+"
+horizontal_alignment = 1
+
+[node name="Statistics" type="Label" parent="MarginContainer/VBoxContainer/MarginContainer/HBoxContainer/StatisticsContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "Total capture:
+Total profit:
+Fish population:
+Ships:"
+horizontal_alignment = 1
+
+[node name="LeaderboardContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/MarginContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 20
+
+[node name="LeaderboardHeader" type="Label" parent="MarginContainer/VBoxContainer/MarginContainer/HBoxContainer/LeaderboardContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 50
+text = "Leaderboard"
+horizontal_alignment = 1
+
+[node name="Leaderboard" type="Label" parent="MarginContainer/VBoxContainer/MarginContainer/HBoxContainer/LeaderboardContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "-"
+horizontal_alignment = 1
+
+[node name="MarginContainer2" type="MarginContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 350
+theme_override_constants/margin_right = 350
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/MarginContainer2"]
+layout_mode = 2
+theme_override_constants/separation = 50
+
+[node name="MenuButton" type="Button" parent="MarginContainer/VBoxContainer/MarginContainer2/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 30
+text = "Main menu"
+
+[node name="ReplayButton" type="Button" parent="MarginContainer/VBoxContainer/MarginContainer2/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 30
+text = "Replay"
+
+[node name="StatisticsButton" type="Button" parent="MarginContainer/VBoxContainer/MarginContainer2/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 30
+text = "Detailed statistics"
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(146, 673)
+scale = Vector2(0.163004, 0.163004)
+texture = ExtResource("2_aaytr")
+
+[node name="Sprite2D2" type="Sprite2D" parent="."]
+position = Vector2(1589, 290)
+scale = Vector2(0.15252, 0.15252)
+texture = ExtResource("3_q8i8a")
+
+[node name="Loader" type="Node" parent="."]
+script = ExtResource("4_ux04b")
+
+[connection signal="pressed" from="MarginContainer/VBoxContainer/MarginContainer2/HBoxContainer/MenuButton" to="." method="_on_menu_button_pressed"]
+[connection signal="pressed" from="MarginContainer/VBoxContainer/MarginContainer2/HBoxContainer/ReplayButton" to="." method="_on_replay_button_pressed"]
+[connection signal="pressed" from="MarginContainer/VBoxContainer/MarginContainer2/HBoxContainer/StatisticsButton" to="." method="_on_statistics_button_pressed"]

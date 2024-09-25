@@ -1,0 +1,23 @@
+[gd_scene load_steps=4 format=3 uid="uid://2hdlia4i0hs0"]
+
+[ext_resource type="Script" path="res://shoal_of_fish.gd" id="1_17a6f"]
+[ext_resource type="Texture2D" uid="uid://dii1h1p2d5x51" path="res://art/shoal.svg" id="2_472v2"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_4jsf1"]
+radius = 50.0
+height = 100.0
+
+[node name="ShoalOfFish" type="Area2D"]
+collision_layer = 2
+script = ExtResource("1_17a6f")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_472v2")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CapsuleShape2D_4jsf1")
+
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
+target_desired_distance = 40.0
+
+[connection signal="target_reached" from="NavigationAgent2D" to="." method="_on_navigation_agent_2d_target_reached"]

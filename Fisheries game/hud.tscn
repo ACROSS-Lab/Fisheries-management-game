@@ -1,0 +1,80 @@
+[gd_scene load_steps=2 format=3 uid="uid://c2r14p1dqpsgi"]
+
+[ext_resource type="Script" path="res://hud.gd" id="1_jvy56"]
+
+[node name="HUD" type="CanvasLayer"]
+layer = 2
+script = ExtResource("1_jvy56")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+custom_minimum_size = Vector2(1200, 43)
+offset_right = 1200.0
+offset_bottom = 65.0
+color = Color(0, 0, 0, 0.498039)
+
+[node name="ScoreContainer" type="MarginContainer" parent="."]
+offset_right = 1200.0
+offset_bottom = 43.0
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+metadata/_edit_use_anchors_ = true
+
+[node name="HBoxContainer" type="HBoxContainer" parent="ScoreContainer"]
+layout_mode = 2
+theme_override_constants/separation = 90
+
+[node name="ShipsLabel" type="Label" parent="ScoreContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 6
+text = "Your ships: 0"
+
+[node name="FishPopulationLabel" type="Label" parent="ScoreContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 6
+text = "Fish population: 0"
+
+[node name="TotalCaptureLabel" type="Label" parent="ScoreContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 6
+text = "Total capture: 0"
+
+[node name="TotalProfitLabel" type="Label" parent="ScoreContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 6
+text = "Total profit: 0"
+
+[node name="ButtonContainer" type="MarginContainer" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -120.0
+offset_right = 1200.0
+grow_vertical = 0
+size_flags_vertical = 8
+theme_override_constants/margin_left = 50
+theme_override_constants/margin_right = 50
+theme_override_constants/margin_bottom = 50
+
+[node name="HBoxContainer" type="HBoxContainer" parent="ButtonContainer"]
+layout_mode = 2
+size_flags_stretch_ratio = 10.0
+theme_override_constants/separation = 150
+alignment = 1
+
+[node name="BuyShipButton" type="Button" parent="ButtonContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Buy ship"
+icon_alignment = 1
+expand_icon = true
+
+[node name="SellShipButton" type="Button" parent="ButtonContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Sell ship"
+icon_alignment = 1
+expand_icon = true
+
+[connection signal="pressed" from="ButtonContainer/HBoxContainer/BuyShipButton" to="." method="_on_buy_ship_button_pressed"]
+[connection signal="pressed" from="ButtonContainer/HBoxContainer/SellShipButton" to="." method="_on_sell_ship_button_pressed"]

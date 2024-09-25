@@ -1,0 +1,37 @@
+[gd_scene load_steps=5 format=3 uid="uid://d2lysmfskof41"]
+
+[ext_resource type="Script" path="res://ship.gd" id="1_mkhi1"]
+[ext_resource type="Texture2D" uid="uid://xdk8jgne85p6" path="res://art/bateau-de-peche.png" id="4_a7tuf"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_hi6hv"]
+radius = 49.0
+height = 102.0
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_3478o"]
+radius = 50.0
+height = 102.0
+
+[node name="Ship" type="Area2D"]
+collision_mask = 2
+script = ExtResource("1_mkhi1")
+
+[node name="FishingArea" type="Area2D" parent="."]
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="FishingArea"]
+shape = SubResource("CapsuleShape2D_hi6hv")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(-2, 15)
+scale = Vector2(0.065, 0.065)
+texture = ExtResource("4_a7tuf")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+scale = Vector2(0.1, 0.1)
+shape = SubResource("CapsuleShape2D_3478o")
+
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
+target_desired_distance = 40.0
+
+[connection signal="area_entered" from="FishingArea" to="." method="_on_fishing_area_area_entered"]
+[connection signal="target_reached" from="NavigationAgent2D" to="." method="_on_navigation_agent_2d_target_reached"]
