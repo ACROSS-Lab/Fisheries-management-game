@@ -28,6 +28,8 @@ func _ready():
 # Called every frame. 'delta' is the elapsed time since the previous frame
 # Proceeds towards the goal while staying within the navigation and screen bounds
 func _process(delta):
+	if navigation_agent.is_navigation_finished():
+		return
 	var dir = to_local(navigation_agent.get_next_path_position()).normalized()
 	var velocity = dir * speed
 	position += velocity * delta
@@ -38,6 +40,7 @@ func _process(delta):
 # Calls the function to set a new target if active; stops if not
 func _on_navigation_agent_2d_target_reached():
 	if active:
+		await get_tree().physics_frame
 		change_target()
 	else:
 		stop()

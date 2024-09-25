@@ -34,4 +34,4 @@ func update_score(ships, fish, cost, capture, profit):
 	$ScoreContainer/HBoxContainer/ShipsLabel.text = "Your ships: " + str(ships) + " (maintenance cost: " + str(cost) + "$/ship/day)"
 	$ScoreContainer/HBoxContainer/FishPopulationLabel.text = "Fish population: " + str(round(fish))
 	$ScoreContainer/HBoxContainer/TotalCaptureLabel.text = "Total capture: " + str(round(capture))
-	$ScoreContainer/HBoxContainer/TotalProfitLabel.text = "Total profit: " + str(round(profit))
+	$ScoreContainer/HBoxContainer/TotalProfitLabel.text = "Balance: " + str(round(profit))

@@ -42,7 +42,7 @@ text = "Total capture: 0"
 [node name="TotalProfitLabel" type="Label" parent="ScoreContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 6
-text = "Total profit: 0"
+text = "Balance: 0"
 
 [node name="ButtonContainer" type="MarginContainer" parent="."]
 anchors_preset = 2
