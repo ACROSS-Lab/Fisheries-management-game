@@ -12,11 +12,22 @@
       flex-direction: column;
     }
     .comparison {
-            flex: 1;
-            background-color: lightblue;
-        }
-    .player {
+        background-color: lightblue;
+    }
+    .comparisonCharts {
         flex: 1;
+        display: flex;
+    }
+    .buttonPanel{
+      display: flex;
+      flex: 0.5;
+      flex-direction: column;
+    }
+    .rankingDiv{
+      flex: 3;
+    }
+    .player {
+        flex: 2;
         display: flex;
     }
     .infos {
@@ -25,6 +36,9 @@
         box-sizing: border-box; 
         background-color: #f0f0f0; 
         min-width: 0; 
+    }
+    .gameStats{
+      margin-bottom: 20px;
     }
     .view {
         flex: 2; 
@@ -63,19 +77,45 @@
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-boxplot"></script>
 </head>
 <body>
+   <!-- ranking tab-->
   <div class="comparison">
     <h1>Rankings</h1>
-    <div class="chartDiv">
-      <canvas id="rankingChart" class="chart"></canvas>
+    <div class="comparisonCharts">
+      <div class="buttonPanel">
+        <h3>Sort by:</h3>
+          <label>
+              <input type="radio" name="options" checked value="Capture" id="defaultOption" onclick="handleRadioChange(event)"> Capture
+          </label>
+          <label>
+              <input type="radio" name="options" value="Profit" onclick="handleRadioChange(event)"> Profit
+          </label>
+          <label>
+              <input type="radio" name="options" value="Stock" onclick="handleRadioChange(event)"> Fish Stock
+          </label>
+      </div>
+      <div class="rankingDiv">
+        <div class="chartDiv">
+          <canvas id="RankingChart" class="chart"></canvas>
+        </div>  
+      </div>
+      <div class="rankingDiv">
+        <div class="chartDiv">
+          <canvas id="WhiskerChart" class="chart"></canvas>
+        </div>  
+      </div>
     </div>
   </div>
+
+
+  <!-- player tab-->
   <div class="player">
     <div class="infos">
       <h1>Player Statistics</h1>
       <select id="playerSelect" onchange="fetchPlayerData()">
-        <option value="">Select a player</option>
+        <option value="">Select a game</option>
       </select>
       <div class="gameInfo">
         <div class="label">Player:</div>
@@ -96,13 +136,26 @@
           <canvas id="PlayerEvolutionChart" class="chart"></canvas>
         </div>
       </div>
-      <div id="highScores">
+      <div id="highScores" class="gameStats">
         Records:
         <div class="gameInfo">
           <div class="label">Best capture:</div>
-          <div id="highScoreCapture">ccc</div>
+          <div id="highScoreCapture"></div>
           <div class="label">Best end capital:</div>
-          <div id="highScoreCapital">ccc</div>
+          <div id="highScoreCapital"></div>
+          <div class="label">Best end fish biomass:</div>
+          <div id="highScoreBiomass"></div>
+        </div>
+      </div>
+      <div id="ranks" class="gameStats">
+        Current game rankings:
+        <div class="gameInfo">
+          <div class="label">Capture:</div>
+          <div id="rankCapture"></div>
+          <div class="label">End capital:</div>
+          <div id="rankCapital"></div>
+          <div class="label">Fish biomass:</div>
+          <div id="rankBiomass"></div>
         </div>
       </div>
       <div id="playerData"></div>
@@ -131,26 +184,38 @@
     
     var dataBase;
 
-    var fish_pop;
-    var profit;
-    var fleet_size;
-    var capture;
-
-    var player_name;
-    var player_objective;
-    var player_capture;
-    var player_profit;
+    var currentId = -1;
+    var currentCategory = "Capture";
 
     var generalChart;
     var economyChart;
     var captureChart;
     var playerEvolutionChart;
+    var rankingChart;
+    var whiskerChart;
 
+    const simulationCounters = {};
     const playerCaptureEvolution = {};
     const playerCapitalEvolution = {};
     const playerObjectivesList = {};
     const playerBestCapture = {};
     const playerBestProfit = {};
+    const playerBestBiomass = {};
+
+    // whisker box charts variables
+    var stats = {};
+
+    // var captureStatsForCapture;
+    // var capitalStatsForCapture;
+    // var stockStatsForCapture;
+
+    // var captureStatsForProfit;
+    // var capitalStatsForProfit;
+    // var stockStatsForProfit;
+
+    window.onload = function() {
+      document.getElementById('defaultOption').checked = true;
+    };
 
     //************************************************//
     // event triggered at the opening of the web page //
@@ -161,13 +226,12 @@
       fetch('/api/players')
         .then(response => response.json())
         .then(data => {
-          dataBase = data;
+          dataBase = computeRankings(convertDataBase(data));
 
-          // sort by timestamp and add simulation number
+          // sort by timestamp and add simulation number. Compute highscores per player. 
           dataBase.players.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-          const simulationCounters = {};
-          dataBase.players.forEach(player => {
-            const playerName = player.username;
+          dataBase.players.forEach(gameData => {
+            const playerName = gameData.username;
             if (!simulationCounters[playerName]) {
                 simulationCounters[playerName] = 0;
                 playerCaptureEvolution[playerName] = [];
@@ -175,121 +239,51 @@
                 playerObjectivesList[playerName] = [];
             }
             simulationCounters[playerName]++;
-            player.simulationNumber = simulationCounters[playerName];
-            playerCaptureEvolution[playerName].push(player.total_capture);
-            playerCapitalEvolution[playerName].push(player.total_profit);
-            playerObjectivesList[playerName].push(player.objective);
-            if (!playerBestCapture[playerName] || player.total_capture > playerBestCapture[playerName].score){
-              playerBestCapture[playerName] = {score: player.total_capture, index: simulationCounters[playerName]};
+            gameData.simulationNumber = simulationCounters[playerName];
+            playerCaptureEvolution[playerName].push(gameData.total_capture);
+            playerCapitalEvolution[playerName].push(gameData.total_profit);
+            playerObjectivesList[playerName].push(gameData.objective);
+            if (!playerBestCapture[playerName] || gameData.total_capture > playerBestCapture[playerName].score){
+              playerBestCapture[playerName] = {score: gameData.total_capture, index: simulationCounters[playerName]};
             }
-            if (!playerBestProfit[playerName] || player.total_profit > playerBestProfit[playerName].score){
-              playerBestProfit[playerName] = {score: player.total_profit, index: simulationCounters[playerName]};
+            if (!playerBestProfit[playerName] || gameData.total_profit > playerBestProfit[playerName].score){
+              playerBestProfit[playerName] = {score: gameData.total_profit, index: simulationCounters[playerName]};
+            }
+            if (!playerBestBiomass[playerName] || gameData.final_fish_pop > playerBestBiomass[playerName].score){
+              playerBestBiomass[playerName] = {score: gameData.final_fish_pop, index: simulationCounters[playerName]};
             }
           });
 
-          // compute rankings
-          const sortedPlayersByCapture = [...dataBase.players].sort((a, b) => a.total_capture - b.total_capture);
-          sortedPlayersByCapture.forEach((player, index) => {
-          const originalPlayer = dataBase.players.find(p => p.id === player.id); 
-              originalPlayer.captureRank = index + 1;  
-          });
-
-          // prepare ranking charts
-          const playerIdsSortedByCapture = sortedPlayersByCapture.map(player => player.id);
-          const totalCapturesSortedByCapture = sortedPlayersByCapture.map(player => player.total_capture);
-          const totalProfitsSortedByCapture = sortedPlayersByCapture.map(player => player.total_profit);
-
-          // bar charts
-
-          const minValueProfit = Math.min(0,Math.min(...totalProfitsSortedByCapture));
-          const maxValueCapture = Math.max(...totalCapturesSortedByCapture);
-          const maxValueProfit =   Math.max(...totalProfitsSortedByCapture);
           
-          const minValueCapture = minValueProfit*maxValueCapture/maxValueProfit;
-
-          // const minValue = Math.min(
-          //     Math.min(...totalCapturesSortedByCapture), 
-          //     Math.min(...totalProfitsSortedByCapture)
-          // );
-
-          // // Trouver la valeur maximale commune
-          // const maxValue = Math.max(
-          //     Math.max(...totalCapturesSortedByCapture), 
-          //     Math.max(...totalProfitsSortedByCapture)
-          // );
-
-          const ctxRankingChart = document.getElementById('rankingChart').getContext('2d');
-          const rankingChart = new Chart(ctxRankingChart, {
-              type: 'bar',
-              data: {
-                  labels: playerIdsSortedByCapture,  // Afficher les IDs des joueurs en abscisse
-                  datasets: [
-                      {
-                          label: 'Total Capture',
-                          data: totalCapturesSortedByCapture,  // Valeurs de total_capture
-                          backgroundColor: 'rgba(54, 162, 235, 0.6)',  // Bleu
-                          borderColor: 'rgba(54, 162, 235, 1)',
-                          borderWidth: 1,
-                          yAxisID: 'y-left' 
-                      },
-                      {
-                          label: 'Total Profit',
-                          data: totalProfitsSortedByCapture,  // Valeurs de total_profit
-                          backgroundColor: 'rgba(255, 159, 64, 0.6)',  // Orange
-                          borderColor: 'rgba(255, 159, 64, 1)',
-                          borderWidth: 1,
-                          yAxisID: 'y-right'
-                      }
-                  ]
-              },
-              options: {
-                  scales: {
-                      x: {
-                          title: {
-                              display: true,
-                              text: 'Player IDs'
-                          }
-                      },
-                      'y-left': {
-                          beginAtZero: false,  
-                          min: minValueCapture,  
-                          max: maxValueCapture, 
-                          title: {
-                              display: true,
-                              text: 'Total Capture (tons)'  
-                          },
-                          position: 'left'
-                      },
-                      'y-right': {
-                          beginAtZero: false,  
-                          min: minValueProfit,  
-                          max: maxValueProfit,  
-                            
-                          title: {
-                              display: true,
-                              text: 'Total Profit ($)'  
-                          },
-                          position: 'right',  
-                          grid: {
-                              drawOnChartArea: false  
-                          }
-                      }
-                  }
-              }
-          });
-
-          // fin chart
+          
 
 
           const select = document.getElementById('playerSelect');
 
-          dataBase.players.forEach(player => {
+          dataBase.players.forEach(gameData => {
             const option = document.createElement('option');
-            option.value = player.id;
-            option.textContent = `${player.username} - ${player.timestamp}`;
-            option.textContent = `${player.username} - Simulation #${player.simulationNumber} (${player.timestamp})`;
+            option.value = gameData.id;
+            option.textContent = `${gameData.username} - ${gameData.timestamp}`;
+            option.textContent = `${gameData.username} - Simulation #${gameData.simulationNumber} (${gameData.timestamp})`;
             select.appendChild(option);
           });
+
+          // draw ranking charts
+          drawRankings("Capture");
+
+          // whisker boxes
+          stats.Capture = {
+            capture: dataBase.players.filter(el => el.objective === "Capture").map(el => el.total_capture),
+            profit: dataBase.players.filter(el => el.objective === "Capture").map(el => el.total_profit),
+            stock: dataBase.players.filter(el => el.objective === "Capture").map(el => el.final_fish_stock)
+          };
+          stats.Profit = {
+            capture: dataBase.players.filter(el => el.objective === "Profit").map(el => el.total_capture),
+            profit: dataBase.players.filter(el => el.objective === "Profit").map(el => el.total_profit),
+            stock: dataBase.players.filter(el => el.objective === "Profit").map(el => el.final_fish_stock)
+          };
+
+          drawWhisters();
 
           const urlParams = new URLSearchParams(window.location.search);
           const autoSelectId = urlParams.get('autoSelectId');
@@ -306,32 +300,33 @@
 
     function fetchPlayerData() {
       const select = document.getElementById('playerSelect');
-      const playerId = select.value;
+      const gameId = select.value;
      
-      if (playerId) {
-        player_name = playerId;
-        gameData = dataBase.players.find(el => el.id == playerId);
+      if (gameId) {
+        currentId = gameId;
+        gameData = dataBase.players.find(el => el.id == gameId);
         
-        player_name = gameData.username;
-        player_objective = gameData.objective;
-        player_capture = normalizeCapture(gameData.total_capture)+ " tons";
-        player_capital = normalizeProfit(gameData.total_profit)+ " \$";
+        const playerName = gameData.username;
+        const player_objective = gameData.objective;
+        const player_capture = gameData.total_capture+ " tons";
+        const player_capital = gameData.total_profit+ " \$";
 
         
         // populate general infos
 
-        playerName.textContent = player_name;
+        playerName.textContent = playerName;
         playerObjective.textContent = player_objective;
         playerCapture.textContent = player_capture;
         playerCapital.textContent = player_capital;
 
         // populate high scores
 
-        highScoreCapture.textContent = normalizeCapture(playerBestCapture[player_name].score)
-            +' tons (game #'+playerBestCapture[player_name].index+')';
-        highScoreCapital.textContent = normalizeProfit(playerBestProfit[player_name].score)
-            +' $ (game #'+playerBestProfit[player_name].index+')';
-
+        highScoreCapture.textContent = playerBestCapture[playerName].score
+            +' tons (game #'+playerBestCapture[playerName].index+')';
+        highScoreCapital.textContent = playerBestProfit[playerName].score
+            +' $ (game #'+playerBestProfit[playerName].index+')';
+        highScoreBiomass.textContent = playerBestBiomass[playerName].score
+            +' tons (game #'+playerBestBiomass[playerName].index+')';
 
         document.getElementById('playerObjective').classList.remove('captureObjective');
         document.getElementById('playerObjective').classList.remove('profitObjective');
@@ -341,14 +336,19 @@
           document.getElementById('playerObjective').classList.add('profitObjective');
         }
 
-        fish_pop = JSON.parse(gameData.fish_population);
-        profit = JSON.parse(gameData.profit);
-        capture = JSON.parse(gameData.capture);
-        fleet_size = JSON.parse(gameData.ships);
+        // populate rankings
+        rankCapture.textContent = gameData.captureRank;
+
+
+        const fish_pop = gameData.fish_population;
+        const profit = gameData.profit;
+        const capture = gameData.capture;
+        const fleet_size = gameData.ships;
 
         const playerData = document.getElementById('playerData');
-        // playerData.textContent = JSON.stringify(gameData);
-       
+        //  playerData.textContent = JSON.stringify(gameData);
+        // playerData.textContent = stats.Capture.capture;
+
         // erase previous charts
 
         if (generalChart) {
@@ -364,6 +364,7 @@
           playerEvolutionChart.destroy();
         }
 
+        
         const ctxGeneral = document.getElementById('GeneralChart').getContext('2d');
         generalChart = new Chart(ctxGeneral, {
         type: 'line', 
@@ -371,7 +372,7 @@
             labels: fish_pop.map((_, index) => `Day ${index + 1}`), 
             datasets: [{
                 label: 'Fish stock',
-                data: fish_pop.map(el => normalizeCapture(el)), 
+                data: fish_pop.map(el => el), 
                 borderColor: 'rgba(45, 191, 82, 1)',
                 backgroundColor: 'rgba(45, 191, 82, 0.2)',
                 borderWidth: 2,
@@ -402,7 +403,7 @@
             labels: fish_pop.map((_, index) => `Day ${index + 1}`), 
             datasets: [{
               label: 'Capture',
-              data: capture.map(el => normalizeCapture(el)), 
+              data: capture.map(el => el), 
               borderColor: 'rgba(75, 192, 192, 1)',
               backgroundColor: 'rgba(75, 192, 192, 0.2)',
               borderWidth: 2,
@@ -496,26 +497,26 @@
         playerEvolutionChart = new Chart(ctxPlayer, {
           type: 'line',
           data: {
-            labels: playerCaptureEvolution[player_name].map((_, index) => `Game ${index + 1}`),
+            labels: playerCaptureEvolution[playerName].map((_, index) => `Game ${index + 1}`),
             datasets: [{
               label: 'Total capture',
-              data: playerCaptureEvolution[player_name],
+              data: playerCaptureEvolution[playerName],
               borderColor: 'rgba(75, 192, 192, 1)',
               backgroundColor: 'rgba(75, 192, 192, 0.2)',
               borderWidth: 2,
-              pointRadius: playerObjectivesList[player_name].map((objective) => objective === 'Capture' ? 5 : 3),
-              pointBackgroundColor: playerObjectivesList[player_name].map((objective) => objective === 'Capture' ? 'rgb(75,192,192, 1)' : 'rgba(75, 192, 192, 0.2'),
+              pointRadius: playerObjectivesList[playerName].map((objective) => objective === 'Capture' ? 5 : 3),
+              pointBackgroundColor: playerObjectivesList[playerName].map((objective) => objective === 'Capture' ? 'rgb(75,192,192, 1)' : 'rgba(75, 192, 192, 0.2'),
               pointBorderColor: 'rgba(75, 192, 192, 1)', 
             },
             {
               label: 'End capital',
-              data: playerCapitalEvolution[player_name],
+              data: playerCapitalEvolution[playerName],
               borderColor: 'rgba(255, 149, 62, 1)',
               backgroundColor: 'rgba(255, 149, 62, 0.2)',
               yAxisID: 'y-axis-capital',
               borderWidth: 2,
-              pointRadius: playerObjectivesList[player_name].map((objective) => objective === 'Profit' ? 5 : 3),
-              pointBackgroundColor: playerObjectivesList[player_name].map((objective) => objective === 'Profit' ? 'rgb(255, 149, 62, 1)' : 'rgba(255, 149, 62, 0.2'),
+              pointRadius: playerObjectivesList[playerName].map((objective) => objective === 'Profit' ? 5 : 3),
+              pointBackgroundColor: playerObjectivesList[playerName].map((objective) => objective === 'Profit' ? 'rgb(255, 149, 62, 1)' : 'rgba(255, 149, 62, 0.2'),
               pointBorderColor: 'rgba(255, 149, 62, 1)', 
             }]
           },
@@ -543,7 +544,7 @@
               //       return  this.getLabelForValue(value); 
               //     },
               //     color: function(context) {
-              //       return playerObjectivesList[player_name][context.index] === 'Capture' ? 'blue' : 'orange'; 
+              //       return playerObjectivesList[playerName][context.index] === 'Capture' ? 'blue' : 'orange'; 
               //     }
               //   }
               // }
@@ -551,6 +552,8 @@
           }
         });
 
+        //update rankings;
+        drawRankings(currentCategory);
 
 
 
@@ -559,7 +562,30 @@
       }
     }
 
-  function normalizeCapture(f){
+  //************************************************//
+  // normalize units, add final fish population     //
+  //************************************************//
+
+  function convertDataBase(d){
+    d.players.forEach(gameData => {
+  
+      gameData.fish_population = JSON.parse(gameData.fish_population).map(el => normalizeFishQuantity(el));
+      gameData.total_capture = normalizeFishQuantity(gameData.total_capture);
+      gameData.capture = JSON.parse(gameData.capture).map(el => normalizeFishQuantity(el));
+      gameData.ships = JSON.parse(gameData.ships);
+      gameData.profit = JSON.parse(gameData.profit).map(el => normalizeProfit(el));
+    })
+
+     // add final fish stock
+
+     d.players.forEach(gameData => {
+      gameData.final_fish_pop = gameData.fish_population.at(-1);
+    });
+
+    return d;
+  }
+
+  function normalizeFishQuantity(f){
     return Math.floor(f/1000*100)/100;
   }
 
@@ -567,6 +593,300 @@
     return Math.floor(f*100)/100;
   }
     
+
+  function computeRankings(d){
+    let sortedGameList;
+   
+    // sort by capture
+    sortedGameList = [...d.players].sort((a, b) => a.total_capture - b.total_capture);
+    sortedGameList.forEach((game, index) => {
+      const originalGame = d.players.find(p => p.id === game.id); 
+      originalGame.captureRank = d.players.length - index;
+    });
+
+    // sort by profit
+    sortedGameList = [...d.players].sort((a, b) => a.total_profit - b.total_profit);
+    sortedGameList.forEach((game, index) => {
+      const originalGame = d.players.find(p => p.id === game.id); 
+      originalGame.profitRank = d.players.length - index;
+    });
+
+        // sort by fish stock
+    sortedGameList = [...d.players].sort((a, b) => a.final_fish_pop  - b.final_fish_pop);
+    sortedGameList.forEach((game, index) => {
+      const originalGame = d.players.find(p => p.id === game.id); 
+      originalGame.finalStockRank = d.players.length - index;
+    });
+
+    return d;
+  }
+
+
+  function handleRadioChange(event) {
+    const selectedValue = event.target.value;
+    currentCategory = selectedValue;
+    drawRankings(selectedValue);
+   
+  }
+
+  function drawRankings(sortCategory){
+
+    let sortedLabels;
+    let sortedTotalCaptures;
+    let sortedTotalProfits;
+    let sortedFinalStocks;
+    let sortedObjectives;
+
+
+    if (rankingChart) {
+      rankingChart.destroy();
+    }
+
+   
+
+    let sortedGameList;
+
+    switch (sortCategory){
+      case 'Capture':
+      sortedGameList = [...dataBase.players].sort((a, b) => a.captureRank - b.captureRank);
+        break;
+      case 'Profit':
+      sortedGameList = [...dataBase.players].sort((a, b) => a.profitRank - b.profitRank);
+      break;
+      default:
+      sortedGameList = [...dataBase.players].sort((a, b) => a.finalStockRank - b.finalStockRank);
+    }
+
+    const highLightIndex = sortedGameList.map(el => el.id).findIndex(el => el == currentId); // == because there is a type conversion issue. To be fixed 
+
+    // const playerData = document.getElementById('playerData');
+    //  playerData.textContent = highLightIndex;
+
+
+    sortedLabels = sortedGameList.map(gameData => {
+      let lbl = gameData.username;
+      if (simulationCounters[gameData.username]>1){
+        lbl += "#"+gameData.simulationNumber;
+      }
+      return lbl;
+    });
+
+    sortedTotalCaptures = sortedGameList.map(player => player.total_capture);
+    sortedTotalProfits = sortedGameList.map(player => player.total_profit);
+    sortedFinalStocks = sortedGameList.map(player => player.final_fish_pop);
+    sortedObjectives = sortedGameList.map(player => player.objective);
+
+    // bar charts
+    let minValueProfit = Math.min(0,Math.min(...sortedTotalProfits));
+    const maxValueProfit =   Math.max(...sortedTotalProfits);
+    const maxValueCapture = Math.max(...sortedTotalCaptures);
+    const maxValueFinalStock = Math.max(...sortedFinalStocks);
+
+
+    if (maxValueProfit > 0 && minValueProfit < -0.2*maxValueProfit){// reduce size of negative value in the chart 
+      minValueProfit = -0.2*maxValueProfit;
+    }
+    
+    const minValueCapture = minValueProfit*maxValueCapture/maxValueProfit;
+    const minValueFinalStock = minValueProfit*maxValueFinalStock/maxValueProfit;
+
+    const ctxRankingChart = document.getElementById('RankingChart').getContext('2d');
+    
+    rankingChart = new Chart(ctxRankingChart, {
+        type: 'bar',
+        data: {
+            labels: sortedLabels,  
+            datasets: [
+                {
+                    label: 'Total Capture',
+                    data: sortedTotalCaptures,  
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',  
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                    yAxisID: 'y-capture' 
+                },
+                {
+                    label: 'Total Profit',
+                    data: sortedTotalProfits, 
+                    backgroundColor: 'rgba(255, 159, 64, 0.6)',  
+                    borderColor: 'rgba(255, 159, 64, 1)',
+                    borderWidth: 1,
+                    yAxisID: 'y-profit'
+                },
+                {
+                    label: 'Fish stock',
+                    data: sortedFinalStocks,  
+                    backgroundColor: 'rgba(45, 191, 82, 1)',  
+                    borderColor: 'rgba(45, 191, 82, 1)',
+                    borderWidth: 1,
+                    yAxisID: 'y-stock'
+                }
+            ]
+        },
+        options: {
+            scales: {
+                x: {
+                    stacked: false,
+                    grid: {
+                        offset: true 
+                    },
+                    ticks: {
+                      color: function(context) {
+                        if (highLightIndex >= 0 && context.index === highLightIndex) {
+                          return 'red';
+                        } 
+                        if (sortedObjectives[context.index] === "Capture"){
+                          return 'rgba(54, 162, 235, 1)';
+                        }
+                        return 'rgba(255, 159, 64, 1)';
+                        // return (highLightIndex > 0 && context.index === highLightIndex) ? 'red' : 'gray';
+                      },
+                      //        maxRotation: 0, 
+                    },
+                    // barPercentage: 0.5,
+                    // categoryPercentage: 0.8,
+                    title: {
+                        display: true,
+                        text: 'Player IDs'
+                    }
+                },
+                'y-capture': {
+                    beginAtZero: false,  
+                    min: minValueCapture,  
+                    max: maxValueCapture, 
+                    title: {
+                        display: true,
+                        text: 'Total Capture (tons)',
+                        color: 'rgba(54, 162, 235, 1)'
+                    },
+                    ticks: {
+                        color: 'rgba(54, 162, 235, 1)'
+                    },
+                    position: 'left'
+                },
+                'y-profit': {
+                    beginAtZero: false,  
+                    min: minValueProfit,  
+                    max: maxValueProfit,  
+                      
+                    title: {
+                        display: true,
+                        text: 'Total Profit ($)',
+                        color: 'rgba(255, 159, 64, 1)'
+                    },
+                    ticks: {
+                        color: 'rgba(255, 159, 64, 1)'
+                    },
+                    position: 'right',  
+                    grid: {
+                        drawOnChartArea: false  
+                    }
+                },
+                'y-stock': {
+                    beginAtZero: false,  
+                    min: minValueFinalStock,  
+                    max: maxValueFinalStock,  
+                      
+                    title: {
+                        display: true,
+                        text: 'Fish stock (Tons)',
+                        color: 'rgba(45, 191, 82, 1)'
+                    },
+                    ticks: {
+                        color: 'rgba(45, 191, 82, 1)',
+                    },
+                    position: 'right',  
+                    grid: {
+                        drawOnChartArea: false  
+                    }
+                }
+            },
+            layout: {
+                padding: {
+                    left: 10, // Espacement interne pour le rendu de la bordure gauche
+                    right: 10 // Espacement interne pour le rendu de la bordure droite
+                }
+            },
+            barThickness: 4, // Ajuste la largeur des barres
+            maxBarThickness: 30, // Définit la largeur maximale des barres
+            categoryPercentage: 0.6, // Réduit l'espace réservé pour chaque groupe
+            barPercentage: 0.8
+        }
+        
+    });
+  }
+
+
+  // whisker box
+  function drawWhisters(){
+
+    const playerData = document.getElementById('playerData');
+    playerData.textContent = 'truc';
+
+
+    // const data ={
+    //   labels:['Capture objective', 'Profit objective'],
+    //   datasets: [{
+    //     label: 'Capture',
+    //     backgroundColor: 'rgba(54, 162, 235, 0.6)',  
+    //     borderColor: 'rgba(54, 162, 235, 1)',
+    //     borderWidth: 1,
+    //     oulierColor: 'black',
+    //     itemRadius: 2,
+    //     data: [stats.Capture.capture, stats.Profit.capture]
+    //   }]
+    // };
+
+    const data = {
+    labels: ['Sample A', 'Sample B', 'Sample C'], // Les étiquettes des différentes boîtes
+    datasets: [{
+        label: 'Dataset',
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        borderColor: 'rgba(75, 192, 192, 1)',
+        borderWidth: 1,
+        outlierColor: '#FF0000',
+        itemRadius: 2,
+        data: [
+            [5, 7, 8, 10, 12],  // Données pour Sample A (valeurs: min, Q1, médiane, Q3, max)
+            [6, 8, 9, 11, 14],  // Données pour Sample B
+            [3, 5, 6, 8, 9]     // Données pour Sample C
+        ]
+    }]
+};
+
+    playerData.textContent = 'truc2';
+
+    const options = {
+      responsive: true,
+      plugins: {
+          legend: {
+              display: true
+          }
+      },
+      scales: {
+          y: {
+              beginAtZero: true,
+              title: {
+                  display: true,
+                  text: 'Values'
+              }
+          }
+      }
+    };
+
+    const ctxWhiskerChart = document.getElementById('WhiskerChart').getContext('2d');
+
+    playerData.textContent = 'truc3';
+   
+    whiskerChart = new Chart(ctxWhiskerChart, {
+        type: 'boxplot',
+        data: data,
+        options: options
+    });
+
+    playerData.textContent = 'truc4';
+
+  }
 
   </script>
 </body>
