@@ -97,15 +97,33 @@
     <h1>Rankings</h1>
     <div class="comparisonCharts">
       <div class="buttonPanel">
-        <h3>Sort by:</h3>
+        <h3>Sort:</h3>
           <label>
-              <input type="radio" name="options" checked value="Capture" id="defaultOption" onclick="handleRadioChange(event)"> Capture
+            <input type="radio" name="options" checked value="None" id="defaultOption" onclick="handleRadioChange(event)">
+            None
           </label>
           <label>
-              <input type="radio" name="options" value="Profit" onclick="handleRadioChange(event)"> Profit
+            <input type="radio" name="options" value="Capture" onclick="handleRadioChange(event)">
+            By Capture
           </label>
           <label>
-              <input type="radio" name="options" value="Stock" onclick="handleRadioChange(event)"> Fish Stock
+              <input type="radio" name="options" value="Profit" onclick="handleRadioChange(event)"> By Profit
+          </label>
+          <label>
+              <input type="radio" name="options" value="Stock" onclick="handleRadioChange(event)"> By Fish Stock
+          </label>
+          <h3>Filter by objective:</h3>
+          <label>
+            <input type="radio" name="filterOptions" checked value="None" id="defaultFilterOption" onclick="handleRadioFilterChange(event)">
+            None
+          </label>
+          <label>
+            <input type="radio" name="filterOptions" value="Capture" onclick="handleRadioFilterChange(event)">
+            Capture
+          </label>
+          <label>
+            <input type="radio" name="filterOptions" value="Profit" onclick="handleRadioFilterChange(event)">
+            Profit
           </label>
       </div>
       <div class="rankingDiv">
@@ -211,6 +229,7 @@
 
     var currentId = -1;
     var currentCategory = "Capture";
+    var currentFilter = "None";
     var currentGamePoints = {
       Capture: {},
       Profit: {}
@@ -236,6 +255,7 @@
 
     window.onload = function() {
       document.getElementById('defaultOption').checked = true;
+      document.getElementById('defaultFilterOption').checked = true;
     };
 
     //************************************************//
@@ -290,7 +310,7 @@
           });
 
           // draw ranking charts
-          drawRankings("Capture");
+          drawRankings(currentCategory,currentFilter);
 
           // whisker boxes
           stats.Capture = {
@@ -580,7 +600,7 @@
         });
 
         //update rankings;
-        drawRankings(currentCategory);
+        drawRankings(currentCategory, currentFilter);
 
         // update whiskerBox
         drawWhisters()
@@ -659,18 +679,22 @@
   function handleRadioChange(event) {
     const selectedValue = event.target.value;
     currentCategory = selectedValue;
-    drawRankings(selectedValue);
-   
+    drawRankings(currentCategory, currentFilter);
   }
 
-  function drawRankings(sortCategory){
+  function handleRadioFilterChange(event) {
+    const selectedValue = event.target.value;
+    currentFilter = selectedValue;
+    drawRankings(currentCategory, currentFilter);
+  }
+
+  function drawRankings(sortCategory, filter){
 
     let sortedLabels;
     let sortedTotalCaptures;
     let sortedTotalProfits;
     let sortedFinalStocks;
     let sortedObjectives;
-
 
     if (rankingChart) {
       rankingChart.destroy();
@@ -680,13 +704,21 @@
 
     switch (sortCategory){
       case 'Capture':
-      sortedGameList = [...dataBase.players].sort((a, b) => a.captureRank - b.captureRank);
+        sortedGameList = [...dataBase.players].sort((a, b) => a.captureRank - b.captureRank);
         break;
       case 'Profit':
-      sortedGameList = [...dataBase.players].sort((a, b) => a.profitRank - b.profitRank);
-      break;
+        sortedGameList = [...dataBase.players].sort((a, b) => a.profitRank - b.profitRank);
+        break;
+      case 'Stock':
+        sortedGameList = [...dataBase.players].sort((a, b) => a.finalStockRank - b.finalStockRank);
+        break;
       default:
-      sortedGameList = [...dataBase.players].sort((a, b) => a.finalStockRank - b.finalStockRank);
+      sortedGameList = [...dataBase.players];
+    }
+
+    console.log(filter);
+    if (filter != "None"){
+      sortedGameList = sortedGameList.filter(el => el.objective === filter);
     }
 
     const highLightIndex = sortedGameList.map(el => el.id).findIndex(el => el == currentId); // == because there is a type conversion issue. To be fixed 
@@ -698,10 +730,11 @@
     sortedLabels = sortedGameList.map(gameData => {
       let lbl = gameData.username;
       if (simulationCounters[gameData.username]>1){
-        lbl += "#"+gameData.simulationNumber;
+        lbl += " #"+gameData.simulationNumber;
       }
       return lbl;
     });
+
 
     sortedTotalCaptures = sortedGameList.map(player => player.total_capture);
     sortedTotalProfits = sortedGameList.map(player => player.total_profit);
@@ -861,68 +894,7 @@
         }
         
     });
-    /*const xPanMin = 0;
-    const xPanMax = 200;
-    let isPanning = false;
-    let startX;
-
-
-    ctxRankingChart.canvas.addEventListener('mousedown', (event) => {
-      isPanning = true;
-      startX = event.offsetX;
-    });
-
-    // Mouse up event to end panning
-    ctxRankingChart.canvas.addEventListener('mouseup', () => {
-      isPanning = false;
-    });
-
-    // Mouse move event for x-axis panning only, with limits
-    ctxRankingChart.canvas.addEventListener('mousemove', (event) => {
-      if (isPanning) {
-        const deltaX = (startX - event.offsetX) / 10; // Adjust for pan speed
-
-        // Calculate proposed new min and max values for x-axis
-        const newXMin = rankingChart.options.scales.x.min + deltaX;
-        const newXMax = rankingChart.options.scales.x.max + deltaX;
-
-        // Only update x-axis if within bounds
-        // if (newXMin >= xPanMin && newXMax <= xPanMax) {
-          rankingChart.options.scales.x.min = newXMin;
-          rankingChart.options.scales.x.max = newXMax;
-        // }
-
-        rankingChart.update('none');
-        startX = event.offsetX;
-        console.log('Panning');
-        console.log(newXMin+' '+newXMax);
-      }
-    });
-
-    // Mouse wheel event for zooming
-    ctxRankingChart.canvas.addEventListener('wheel', (event) => {
-      console.log('zooming');
-      event.preventDefault(); // Prevent page scrolling
-      const zoomFactor = 0.1;
-
-      const xRange = rankingChart.options.scales.x.max - rankingChart.options.scales.x.min;
-
-      // Calculate new min and max for zoom in/out
-      const newMin = event.deltaY < 0
-        ? rankingChart.options.scales.x.min + xRange * zoomFactor
-        : rankingChart.options.scales.x.min - xRange * zoomFactor;
-      const newMax = event.deltaY < 0
-        ? rankingChart.options.scales.x.max - xRange * zoomFactor
-        : rankingChart.options.scales.x.max + xRange * zoomFactor;
-      // console.log(xRange);
-      // Ensure zoom doesn't exceed limits
-      // if (newMin >= xPanMin && newMax <= xPanMax) {
-        rankingChart.options.scales.x.min = newMin;
-        rankingChart.options.scales.x.max = newMax;
-      //   
-      // }
-      rankingChart.update();
-    });*/
+   
 
   }
 
