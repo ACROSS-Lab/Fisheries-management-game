@@ -26,6 +26,14 @@
     .rankingDiv{
       flex: 3;
     }
+    .whiskerDiv{
+      flex: 3;
+      display: flex;
+    }
+    .whiskerChart{
+      flex: 1;
+      background-color: lightblue;
+    }
     .player {
         flex: 2;
         display: flex;
@@ -77,7 +85,11 @@
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-boxplot"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+<!-- script src="https://unpkg.com/@sgratzl/chartjs-chart-boxplot@3"></script -->
 </head>
 <body>
    <!-- ranking tab-->
@@ -98,13 +110,15 @@
       </div>
       <div class="rankingDiv">
         <div class="chartDiv">
+        <!--div style="width: 500px; overflow-x: auto;"-->
           <canvas id="RankingChart" class="chart"></canvas>
-        </div>  
+        </div>
+        <!--/div-->  
       </div>
-      <div class="rankingDiv">
-        <div class="chartDiv">
-          <canvas id="WhiskerChart" class="chart"></canvas>
-        </div>  
+      <!-- canvas id="WhiskerChart" class="chart"></canvas-->
+      <div class="whiskerDiv">
+        <div id="WhiskerChartCapture" class="whiskerChart"></div>
+        <div id="WhiskerChartProfit" class="whiskerChart"></div>
       </div>
     </div>
   </div>
@@ -143,8 +157,8 @@
           <div id="highScoreCapture"></div>
           <div class="label">Best end capital:</div>
           <div id="highScoreCapital"></div>
-          <div class="label">Best end fish biomass:</div>
-          <div id="highScoreBiomass"></div>
+          <div class="label">Best end fish stock:</div>
+          <div id="highScoreFinalStock"></div>
         </div>
       </div>
       <div id="ranks" class="gameStats">
@@ -154,8 +168,8 @@
           <div id="rankCapture"></div>
           <div class="label">End capital:</div>
           <div id="rankCapital"></div>
-          <div class="label">Fish biomass:</div>
-          <div id="rankBiomass"></div>
+          <div class="label">Fish stock:</div>
+          <div id="rankFinalStock"></div>
         </div>
       </div>
       <div id="playerData"></div>
@@ -181,11 +195,26 @@
 
   
   <script>
-    
+
+
+    const opacity = 0.4;
+    const captureColor = 'rgba(54, 162, 235, 1)';
+    const captureColorBg = 'rgba(54, 162, 235,'+opacity+')';
+    const profitColor = 'rgba(255, 159, 64, 1)';
+    const profitColorBg = 'rgba(255, 159, 64,'+opacity+')';
+    const finalStockColor = 'rgba(45, 191, 82, 1)';
+    const finalStockColorBg = 'rgba(45, 191, 82,'+opacity+')';
+    const fleetColor = 'rgba(100, 100, 100, 1)';
+    const highlightColor = 'rgba(231, 76, 60,1)';
+
     var dataBase;
 
     var currentId = -1;
     var currentCategory = "Capture";
+    var currentGamePoints = {
+      Capture: {},
+      Profit: {}
+    };
 
     var generalChart;
     var economyChart;
@@ -200,18 +229,10 @@
     const playerObjectivesList = {};
     const playerBestCapture = {};
     const playerBestProfit = {};
-    const playerBestBiomass = {};
+    const playerBestFinalStock = {};
 
     // whisker box charts variables
     var stats = {};
-
-    // var captureStatsForCapture;
-    // var capitalStatsForCapture;
-    // var stockStatsForCapture;
-
-    // var captureStatsForProfit;
-    // var capitalStatsForProfit;
-    // var stockStatsForProfit;
 
     window.onload = function() {
       document.getElementById('defaultOption').checked = true;
@@ -249,8 +270,8 @@
             if (!playerBestProfit[playerName] || gameData.total_profit > playerBestProfit[playerName].score){
               playerBestProfit[playerName] = {score: gameData.total_profit, index: simulationCounters[playerName]};
             }
-            if (!playerBestBiomass[playerName] || gameData.final_fish_pop > playerBestBiomass[playerName].score){
-              playerBestBiomass[playerName] = {score: gameData.final_fish_pop, index: simulationCounters[playerName]};
+            if (!playerBestFinalStock[playerName] || gameData.final_fish_pop > playerBestFinalStock[playerName].score){
+              playerBestFinalStock[playerName] = {score: gameData.final_fish_pop, index: simulationCounters[playerName]};
             }
           });
 
@@ -275,12 +296,12 @@
           stats.Capture = {
             capture: dataBase.players.filter(el => el.objective === "Capture").map(el => el.total_capture),
             profit: dataBase.players.filter(el => el.objective === "Capture").map(el => el.total_profit),
-            stock: dataBase.players.filter(el => el.objective === "Capture").map(el => el.final_fish_stock)
+            finalStock: dataBase.players.filter(el => el.objective === "Capture").map(el => el.final_fish_pop)
           };
           stats.Profit = {
             capture: dataBase.players.filter(el => el.objective === "Profit").map(el => el.total_capture),
             profit: dataBase.players.filter(el => el.objective === "Profit").map(el => el.total_profit),
-            stock: dataBase.players.filter(el => el.objective === "Profit").map(el => el.final_fish_stock)
+            finalStock: dataBase.players.filter(el => el.objective === "Profit").map(el => el.final_fish_pop)
           };
 
           drawWhisters();
@@ -325,8 +346,8 @@
             +' tons (game #'+playerBestCapture[playerName].index+')';
         highScoreCapital.textContent = playerBestProfit[playerName].score
             +' $ (game #'+playerBestProfit[playerName].index+')';
-        highScoreBiomass.textContent = playerBestBiomass[playerName].score
-            +' tons (game #'+playerBestBiomass[playerName].index+')';
+        highScoreFinalStock.textContent = playerBestFinalStock[playerName].score
+            +' tons (game #'+playerBestFinalStock[playerName].index+')';
 
         document.getElementById('playerObjective').classList.remove('captureObjective');
         document.getElementById('playerObjective').classList.remove('profitObjective');
@@ -338,12 +359,16 @@
 
         // populate rankings
         rankCapture.textContent = gameData.captureRank;
-
+        rankCapital.textContent = gameData.profitRank;
+        rankFinalStock.textContent = gameData.finalStockRank;
 
         const fish_pop = gameData.fish_population;
         const profit = gameData.profit;
         const capture = gameData.capture;
         const fleet_size = gameData.ships;
+
+        // compute the points for the whisker plot
+        currentGamePoints = computeCurrentGamePoints(gameData);
 
         const playerData = document.getElementById('playerData');
         //  playerData.textContent = JSON.stringify(gameData);
@@ -364,6 +389,8 @@
           playerEvolutionChart.destroy();
         }
 
+ 
+
         
         const ctxGeneral = document.getElementById('GeneralChart').getContext('2d');
         generalChart = new Chart(ctxGeneral, {
@@ -373,8 +400,8 @@
             datasets: [{
                 label: 'Fish stock',
                 data: fish_pop.map(el => el), 
-                borderColor: 'rgba(45, 191, 82, 1)',
-                backgroundColor: 'rgba(45, 191, 82, 0.2)',
+                borderColor: finalStockColor,
+                backgroundColor: finalStockColorBg,
                 borderWidth: 2,
                 fill: true 
             }]
@@ -391,7 +418,7 @@
                   text: 'stock size (tons)' 
                 }
               }
-            }
+            },
           }
         });
 
@@ -404,15 +431,15 @@
             datasets: [{
               label: 'Capture',
               data: capture.map(el => el), 
-              borderColor: 'rgba(75, 192, 192, 1)',
-              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              borderColor: captureColor,
+              backgroundColor: captureColorBg,
               borderWidth: 2,
               fill: true 
             },
             {
               label: 'Fleet size',
               data: fleet_size, 
-              borderColor: 'rgba(100, 100, 100, 1)',
+              borderColor: fleetColor,
               yAxisID: 'y-axis-fleetsize',
               showLine: false, 
               pointRadius: 3, 
@@ -453,15 +480,15 @@
               datasets: [{
                   label: 'Net profit',
                   data: profit, 
-                  borderColor: 'rgba(255, 149, 62, 1)',
-                  backgroundColor: 'rgba(255, 149, 62, 0.2)',
+                  borderColor: profitColor,
+                  backgroundColor: profitColorBg,
                   borderWidth: 2,
                   fill: true 
               },
               {
                   label: 'Fleet size',
                   data: fleet_size, 
-                  borderColor: 'rgba(100, 100, 100, 1)',
+                  borderColor: fleetColor,
                   yAxisID: 'y-axis-fleet',
                   showLine: false, 
                   pointRadius: 3, 
@@ -501,23 +528,23 @@
             datasets: [{
               label: 'Total capture',
               data: playerCaptureEvolution[playerName],
-              borderColor: 'rgba(75, 192, 192, 1)',
-              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              borderColor: captureColorBg,
+              backgroundColor: captureColorBg,
               borderWidth: 2,
               pointRadius: playerObjectivesList[playerName].map((objective) => objective === 'Capture' ? 5 : 3),
-              pointBackgroundColor: playerObjectivesList[playerName].map((objective) => objective === 'Capture' ? 'rgb(75,192,192, 1)' : 'rgba(75, 192, 192, 0.2'),
-              pointBorderColor: 'rgba(75, 192, 192, 1)', 
+              pointBackgroundColor: playerObjectivesList[playerName].map((objective) => objective === 'Capture' ? captureColor : captureColorBg),
+              pointBorderColor: captureColor, 
             },
             {
               label: 'End capital',
               data: playerCapitalEvolution[playerName],
-              borderColor: 'rgba(255, 149, 62, 1)',
-              backgroundColor: 'rgba(255, 149, 62, 0.2)',
+              borderColor: profitColorBg,
+              backgroundColor: profitColorBg,
               yAxisID: 'y-axis-capital',
               borderWidth: 2,
               pointRadius: playerObjectivesList[playerName].map((objective) => objective === 'Profit' ? 5 : 3),
-              pointBackgroundColor: playerObjectivesList[playerName].map((objective) => objective === 'Profit' ? 'rgb(255, 149, 62, 1)' : 'rgba(255, 149, 62, 0.2'),
-              pointBorderColor: 'rgba(255, 149, 62, 1)', 
+              pointBackgroundColor: playerObjectivesList[playerName].map((objective) => objective === 'Profit' ? profitColor : profitColorBg),
+              pointBorderColor: profitColor, 
             }]
           },
           options: {
@@ -555,7 +582,8 @@
         //update rankings;
         drawRankings(currentCategory);
 
-
+        // update whiskerBox
+        drawWhisters()
 
       } else {
         document.getElementById('playerData').textContent = '';
@@ -571,6 +599,7 @@
   
       gameData.fish_population = JSON.parse(gameData.fish_population).map(el => normalizeFishQuantity(el));
       gameData.total_capture = normalizeFishQuantity(gameData.total_capture);
+      gameData.total_profit = normalizeProfit(gameData.total_profit);
       gameData.capture = JSON.parse(gameData.capture).map(el => normalizeFishQuantity(el));
       gameData.ships = JSON.parse(gameData.ships);
       gameData.profit = JSON.parse(gameData.profit).map(el => normalizeProfit(el));
@@ -591,6 +620,11 @@
 
   function normalizeProfit(f){
     return Math.floor(f*100)/100;
+  }
+
+  function renormalize(list){
+    const m = Math.max(...list);
+    return list.map(el => el/m*100);
   }
     
 
@@ -642,8 +676,6 @@
       rankingChart.destroy();
     }
 
-   
-
     let sortedGameList;
 
     switch (sortCategory){
@@ -677,18 +709,8 @@
     sortedObjectives = sortedGameList.map(player => player.objective);
 
     // bar charts
-    let minValueProfit = Math.min(0,Math.min(...sortedTotalProfits));
-    const maxValueProfit =   Math.max(...sortedTotalProfits);
-    const maxValueCapture = Math.max(...sortedTotalCaptures);
-    const maxValueFinalStock = Math.max(...sortedFinalStocks);
 
-
-    if (maxValueProfit > 0 && minValueProfit < -0.2*maxValueProfit){// reduce size of negative value in the chart 
-      minValueProfit = -0.2*maxValueProfit;
-    }
-    
-    const minValueCapture = minValueProfit*maxValueCapture/maxValueProfit;
-    const minValueFinalStock = minValueProfit*maxValueFinalStock/maxValueProfit;
+    const ranges = computeChartYlimits(sortedTotalCaptures, sortedTotalProfits, sortedFinalStocks)
 
     const ctxRankingChart = document.getElementById('RankingChart').getContext('2d');
     
@@ -700,51 +722,55 @@
                 {
                     label: 'Total Capture',
                     data: sortedTotalCaptures,  
-                    backgroundColor: 'rgba(54, 162, 235, 0.6)',  
-                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: captureColorBg,  
+                    borderColor: captureColor,
                     borderWidth: 1,
                     yAxisID: 'y-capture' 
                 },
                 {
                     label: 'Total Profit',
                     data: sortedTotalProfits, 
-                    backgroundColor: 'rgba(255, 159, 64, 0.6)',  
-                    borderColor: 'rgba(255, 159, 64, 1)',
+                    backgroundColor: profitColorBg,
+                    borderColor: profitColor,
                     borderWidth: 1,
                     yAxisID: 'y-profit'
                 },
                 {
                     label: 'Fish stock',
                     data: sortedFinalStocks,  
-                    backgroundColor: 'rgba(45, 191, 82, 1)',  
-                    borderColor: 'rgba(45, 191, 82, 1)',
+                    backgroundColor: finalStockColorBg,  
+                    borderColor: finalStockColor,
                     borderWidth: 1,
                     yAxisID: 'y-stock'
                 }
             ]
         },
         options: {
+            //responsive: true,
             scales: {
                 x: {
-                    stacked: false,
-                    grid: {
-                        offset: true 
-                    },
+                    // stacked: false,
+                    type: 'category',
+                    min: 0, max: 100,
+                    // min: 5,
+                    // max: 11,
+                    // grid: {
+                    //     offset: true 
+                    // },
                     ticks: {
                       color: function(context) {
                         if (highLightIndex >= 0 && context.index === highLightIndex) {
-                          return 'red';
+                          return highlightColor;
                         } 
                         if (sortedObjectives[context.index] === "Capture"){
-                          return 'rgba(54, 162, 235, 1)';
+                          return captureColor;
                         }
-                        return 'rgba(255, 159, 64, 1)';
-                        // return (highLightIndex > 0 && context.index === highLightIndex) ? 'red' : 'gray';
+                        return profitColor;
                       },
-                      //        maxRotation: 0, 
+                      align: 'center',
+                      maxRotation: 90, 
+                      autoSkip: false
                     },
-                    // barPercentage: 0.5,
-                    // categoryPercentage: 0.8,
                     title: {
                         display: true,
                         text: 'Player IDs'
@@ -752,30 +778,30 @@
                 },
                 'y-capture': {
                     beginAtZero: false,  
-                    min: minValueCapture,  
-                    max: maxValueCapture, 
+                    min: ranges.capture.min,  
+                    max: ranges.capture.max, 
                     title: {
                         display: true,
                         text: 'Total Capture (tons)',
-                        color: 'rgba(54, 162, 235, 1)'
+                        color: captureColor
                     },
                     ticks: {
-                        color: 'rgba(54, 162, 235, 1)'
+                        color: captureColor
                     },
                     position: 'left'
                 },
                 'y-profit': {
                     beginAtZero: false,  
-                    min: minValueProfit,  
-                    max: maxValueProfit,  
+                    min: ranges.profit.min,  
+                    max: ranges.profit.max,  
                       
                     title: {
                         display: true,
                         text: 'Total Profit ($)',
-                        color: 'rgba(255, 159, 64, 1)'
+                        color: profitColor
                     },
                     ticks: {
-                        color: 'rgba(255, 159, 64, 1)'
+                        color: profitColor
                     },
                     position: 'right',  
                     grid: {
@@ -784,16 +810,16 @@
                 },
                 'y-stock': {
                     beginAtZero: false,  
-                    min: minValueFinalStock,  
-                    max: maxValueFinalStock,  
+                    min: ranges.finalStock.min,  
+                    max: ranges.finalStock.max,  
                       
                     title: {
                         display: true,
                         text: 'Fish stock (Tons)',
-                        color: 'rgba(45, 191, 82, 1)'
+                        color: finalStockColor
                     },
                     ticks: {
-                        color: 'rgba(45, 191, 82, 1)',
+                        color: finalStockColor,
                     },
                     position: 'right',  
                     grid: {
@@ -803,90 +829,409 @@
             },
             layout: {
                 padding: {
-                    left: 10, // Espacement interne pour le rendu de la bordure gauche
-                    right: 10 // Espacement interne pour le rendu de la bordure droite
+                    left: 10, 
+                    right: 10 
                 }
             },
-            barThickness: 4, // Ajuste la largeur des barres
-            maxBarThickness: 30, // Définit la largeur maximale des barres
-            categoryPercentage: 0.6, // Réduit l'espace réservé pour chaque groupe
-            barPercentage: 0.8
+            barThickness: 'flex',//4 
+            maxBarThickness: 30, 
+            categoryPercentage: 0.6, 
+            barPercentage: 0.8,
+            plugins: {
+              zoom: {
+                  limits: {
+                    x: {min: -200, max: 20000, minRange: 2},
+                  },
+                  pan: {
+                      enabled: true,
+                      mode: 'x',
+                  },
+                  zoom: {
+                      mode: 'x', // horizontal zoom
+                      wheel: {
+                          enabled: true
+                      },
+                      pinch: {
+                          enabled: true
+                      },
+                      drag: false
+                  }
+              }
+            }
         }
         
     });
-  }
+    /*const xPanMin = 0;
+    const xPanMax = 200;
+    let isPanning = false;
+    let startX;
 
 
-  // whisker box
-  function drawWhisters(){
-
-    const playerData = document.getElementById('playerData');
-    playerData.textContent = 'truc';
-
-
-    // const data ={
-    //   labels:['Capture objective', 'Profit objective'],
-    //   datasets: [{
-    //     label: 'Capture',
-    //     backgroundColor: 'rgba(54, 162, 235, 0.6)',  
-    //     borderColor: 'rgba(54, 162, 235, 1)',
-    //     borderWidth: 1,
-    //     oulierColor: 'black',
-    //     itemRadius: 2,
-    //     data: [stats.Capture.capture, stats.Profit.capture]
-    //   }]
-    // };
-
-    const data = {
-    labels: ['Sample A', 'Sample B', 'Sample C'], // Les étiquettes des différentes boîtes
-    datasets: [{
-        label: 'Dataset',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 1,
-        outlierColor: '#FF0000',
-        itemRadius: 2,
-        data: [
-            [5, 7, 8, 10, 12],  // Données pour Sample A (valeurs: min, Q1, médiane, Q3, max)
-            [6, 8, 9, 11, 14],  // Données pour Sample B
-            [3, 5, 6, 8, 9]     // Données pour Sample C
-        ]
-    }]
-};
-
-    playerData.textContent = 'truc2';
-
-    const options = {
-      responsive: true,
-      plugins: {
-          legend: {
-              display: true
-          }
-      },
-      scales: {
-          y: {
-              beginAtZero: true,
-              title: {
-                  display: true,
-                  text: 'Values'
-              }
-          }
-      }
-    };
-
-    const ctxWhiskerChart = document.getElementById('WhiskerChart').getContext('2d');
-
-    playerData.textContent = 'truc3';
-   
-    whiskerChart = new Chart(ctxWhiskerChart, {
-        type: 'boxplot',
-        data: data,
-        options: options
+    ctxRankingChart.canvas.addEventListener('mousedown', (event) => {
+      isPanning = true;
+      startX = event.offsetX;
     });
 
-    playerData.textContent = 'truc4';
+    // Mouse up event to end panning
+    ctxRankingChart.canvas.addEventListener('mouseup', () => {
+      isPanning = false;
+    });
+
+    // Mouse move event for x-axis panning only, with limits
+    ctxRankingChart.canvas.addEventListener('mousemove', (event) => {
+      if (isPanning) {
+        const deltaX = (startX - event.offsetX) / 10; // Adjust for pan speed
+
+        // Calculate proposed new min and max values for x-axis
+        const newXMin = rankingChart.options.scales.x.min + deltaX;
+        const newXMax = rankingChart.options.scales.x.max + deltaX;
+
+        // Only update x-axis if within bounds
+        // if (newXMin >= xPanMin && newXMax <= xPanMax) {
+          rankingChart.options.scales.x.min = newXMin;
+          rankingChart.options.scales.x.max = newXMax;
+        // }
+
+        rankingChart.update('none');
+        startX = event.offsetX;
+        console.log('Panning');
+        console.log(newXMin+' '+newXMax);
+      }
+    });
+
+    // Mouse wheel event for zooming
+    ctxRankingChart.canvas.addEventListener('wheel', (event) => {
+      console.log('zooming');
+      event.preventDefault(); // Prevent page scrolling
+      const zoomFactor = 0.1;
+
+      const xRange = rankingChart.options.scales.x.max - rankingChart.options.scales.x.min;
+
+      // Calculate new min and max for zoom in/out
+      const newMin = event.deltaY < 0
+        ? rankingChart.options.scales.x.min + xRange * zoomFactor
+        : rankingChart.options.scales.x.min - xRange * zoomFactor;
+      const newMax = event.deltaY < 0
+        ? rankingChart.options.scales.x.max - xRange * zoomFactor
+        : rankingChart.options.scales.x.max + xRange * zoomFactor;
+      // console.log(xRange);
+      // Ensure zoom doesn't exceed limits
+      // if (newMin >= xPanMin && newMax <= xPanMax) {
+        rankingChart.options.scales.x.min = newMin;
+        rankingChart.options.scales.x.max = newMax;
+      //   
+      // }
+      rankingChart.update();
+    });*/
 
   }
+
+
+  /**************************/
+  /*      whisker box       */
+  /**************************/
+
+
+
+  function drawWhisters(){
+
+    if (whiskerChart) {
+      whiskerChart.destroy();
+    }
+
+    const playerData = document.getElementById('playerData');
+    playerData.textContent = 'trucAB';
+
+    const ranges = computeChartYlimits(stats.Capture.capture.concat(stats.Profit.capture),
+                                      stats.Capture.profit.concat(stats.Profit.profit),
+                                      stats.Capture.finalStock.concat(stats.Profit.finalStock));
+
+  
+  //   const x = stats.Capture.capture.map(el => 'Objective: capture')
+  //             .concat(stats.Profit.capture.map(el => 'Objective: profit'));
+    
+ 
+  //   let traceCapture = {
+
+  //     y: renormalize(stats.Capture.capture.concat(stats.Profit.capture)),
+  //     x: x,
+  //     name: 'capture',
+  //     marker: {color: captureColor},
+  //     type: 'box',
+  //     boxmean: true
+  //   };
+
+
+  //   let traceProfit = {
+  //     y: renormalize(stats.Capture.profit.concat(stats.Profit.profit)),
+  //     x: x,
+  //     name: 'profit',
+  //     marker: {color: profitColor},
+  //     type: 'box'
+  //   };
+
+
+  //   let traceFinalStock = {
+  //     y: renormalize(stats.Capture.finalStock.concat(stats.Profit.finalStock)), 
+  //     x: x,
+  //     name: 'final stock',
+  //     marker: {color: finalStockColor},
+  //     type: 'box'
+  //   };
+
+  //   function calculateMean(data) {
+  //     const sum = data.reduce((acc, val) => acc + val, 0);
+  //     return sum / data.length;
+  //   }
+
+  //   const traceMean = {
+  //   x: ['Objective: capture','Objective: capture','Objective: capture',
+  //      'Objective: profit','Objective: profit','Objective: profit'],
+  //   y: [40, 34, 60,70,10,20],
+  //  // y: [calculateMean(stats.Capture.capture), calculateMean(stats.Capture.profit),calculateMean(stats.Capture.finalStock)],
+  //   mode: 'markers',
+  //   name:  ['Objective: capture','Objective: capture','Objective: capture',
+  //       'Objective: profit','Objective: profit','Objective: profit'],//'Average',
+  //   marker: {
+  //     color: 'purple',   
+  //     size: 12,          
+  //     symbol: 'circle'
+  //   },
+  //   type: 'scatter'
+  // };
+
+  //   var data = [traceCapture, traceProfit, traceFinalStock, traceMean];
+
+  //   var layout = {
+
+  //     yaxis: {
+  //       title: 'Value (%max)',
+  //       range: [-20, 100],
+  //       zeroline: true
+  //     },
+  //     boxmode: 'group'
+  //   };
+
+  //   Plotly.newPlot('WhiskerChart', data, layout, { displayModeBar: false });
+
+
+  // const x = stats.Capture.capture.map(el => 'Objective: capture')
+              // .concat(stats.Profit.capture.map(el => 'Objective: profit'));
+    
+ 
+  let traceCapture = {
+
+    y: stats.Capture.capture.map(el => el*100/ranges.capture.max),
+    name: 'capture',
+    marker: {color: captureColor},
+    type: 'box',
+    boxmean: true
+  };
+
+
+  let traceProfit = {
+    y: stats.Capture.profit.map(el => el*100/ranges.profit.max),
+    name: 'profit',
+    marker: {color: profitColor},
+    type: 'box',
+    boxmean: true
+  };
+
+
+  let traceFinalStock = {
+    y: stats.Capture.finalStock.map(el => el*100/ranges.finalStock.max), 
+    name: 'final stock',
+    marker: {color: finalStockColor},
+    type: 'box',
+    boxmean: true
+  };
+
+  let data;
+
+  if (currentGamePoints.Capture.capture){
+    let traceMean = {
+      x: ['capture','profit','final stock'],
+      y: [currentGamePoints.Capture.capture/ranges.capture.max*100, currentGamePoints.Capture.profit/ranges.profit.max*100, 
+          currentGamePoints.Capture.finalStock/ranges.finalStock.max*100],
+      mode: 'markers',
+      name:  'Current game',
+      marker: {
+        color: highlightColor,   
+        size: 12,          
+        symbol: 'circle'
+      },
+      type: 'scatter'
+    };
+
+    data = [traceCapture, traceProfit, traceFinalStock, traceMean];
+  }else{
+    data = [traceCapture, traceProfit, traceFinalStock];
+  }
+
+  
+
+
+  let layout = {
+    yaxis: {
+      title: 'Value (%max)',
+      range: [-20, 100],
+      zeroline: true
+    },
+    title: {
+      text: 'Objective: capture'
+    },
+    showlegend: false,
+    paper_bgcolor: 'lightblue',
+    plot_bgcolor: 'lightblue',
+  };
+
+  Plotly.newPlot('WhiskerChartCapture', data, layout, { displayModeBar: false });
+
+  // 2nd whisker
+
+  traceCapture = {
+    y: stats.Profit.capture.map(el => el*100/ranges.capture.max),
+    name: 'capture',
+    marker: {color: captureColor},
+    type: 'box',
+    boxmean: true
+    };
+
+
+  traceProfit = {
+    y: stats.Profit.profit.map(el => el*100/ranges.profit.max),
+    name: 'profit',
+    marker: {color: profitColor},
+    type: 'box',
+    boxmean: true
+    };
+
+
+  traceFinalStock = {
+    y: stats.Profit.finalStock.map(el => el*100/ranges.finalStock.max), 
+    name: 'final stock',
+    marker: {color: finalStockColor},
+    type: 'box',
+    boxmean: true
+  };
+
+  if (currentGamePoints.Profit.capture){
+    let traceMean = {
+      x: ['capture','profit','final stock'],
+      y: [currentGamePoints.Profit.capture/ranges.capture.max*100, currentGamePoints.Profit.profit/ranges.profit.max*100, 
+          currentGamePoints.Profit.finalStock/ranges.finalStock.max*100],
+      mode: 'markers',
+      name:  'Current game',
+      marker: {
+        color: highlightColor,   
+        size: 12,          
+        symbol: 'circle'
+      },
+      type: 'scatter'
+    };
+
+    data = [traceCapture, traceProfit, traceFinalStock, traceMean];
+  }else{
+    data = [traceCapture, traceProfit, traceFinalStock];
+  }
+
+  layout = {
+    yaxis: {
+      title: 'Value (%max)',
+      range: [-20, 100],
+      zeroline: true,
+      showticklabels: false, 
+    showline: false,       
+    title: '' 
+    },
+    title: {
+      text: 'Objective: profit'
+    },
+    paper_bgcolor: 'lightblue',
+    plot_bgcolor: 'lightblue',
+    showlegend: false,
+  };
+
+  Plotly.newPlot('WhiskerChartProfit', data, layout, { displayModeBar: false });
+
+
+  console.log(currentGamePoints);
+
+
+  }
+
+  // Compute the y-ranges for the charts
+
+  function computeChartYlimits(captureData, profitData, finalStockData){
+    const ranges = {
+      capture: {},
+      profit: {},
+      finalStock: {}
+    };
+    ranges.profit.min = Math.min(0,Math.min(...profitData));
+    ranges.profit.max =   Math.max(...profitData);
+    ranges.capture.max = Math.max(...captureData);
+    ranges.finalStock.max = Math.max(...finalStockData);
+
+
+    if (ranges.profit.max > 0 && ranges.profit.min < -0.2*ranges.profit.max){// reduce size of negative value in the chart 
+      ranges.profit.min = -0.2*ranges.profit.max;
+    }
+    
+    ranges.capture.min = ranges.profit.min*ranges.capture.max/ranges.profit.max;
+    ranges.finalStock.min = ranges.profit.min*ranges.finalStock.max/ranges.profit.max;
+
+    return ranges;
+
+  }
+
+  // compute stats of a list: min, max, mean, median, q1 and q3
+
+  function listStats(list, outlier){
+      const res = {};
+
+      const sortedArr = [...list].sort((a, b) => a - b);
+
+      const median = (data) => {
+        const mid = Math.floor(data.length / 2);
+        return data.length % 2 !== 0
+          ? data[mid]
+          : (data[mid - 1] + data[mid]) / 2;
+      };
+
+      const lowerHalf = sortedArr.slice(0, Math.floor(sortedArr.length / 2));
+      const upperHalf = sortedArr.slice(Math.ceil(sortedArr.length / 2));
+
+      res.min = Math.min(...list);
+      res.max = Math.max(...list);
+      res.median = median(sortedArr);
+      res.q1 = median(lowerHalf);
+      res.q3 = median(upperHalf);
+
+      const sum = sortedArr.reduce((acc, num) => acc + num, 0);
+      res.mean = sum / sortedArr.length;
+
+      if (outlier){
+        res.outliers = [outlier];
+      }
+  
+      return res;
+  }
+
+  // add one fake outlier
+
+  function computeCurrentGamePoints(gameData){
+    const res = {
+      Capture: {},
+      Profit: {}
+    }
+    res[gameData.objective].capture = gameData.total_capture;
+    res[gameData.objective].profit = gameData.total_profit;
+    res[gameData.objective].finalStock = gameData.final_fish_pop
+    return res;
+  }
+
+  
 
   </script>
 </body>
