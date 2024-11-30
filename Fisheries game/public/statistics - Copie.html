@@ -85,6 +85,7 @@
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
@@ -96,15 +97,33 @@
     <h1>Rankings</h1>
     <div class="comparisonCharts">
       <div class="buttonPanel">
-        <h3>Sort by:</h3>
+        <h3>Sort:</h3>
           <label>
-              <input type="radio" name="options" checked value="Capture" id="defaultOption" onclick="handleRadioChange(event)"> Capture
+            <input type="radio" name="options" checked value="None" id="defaultOption" onclick="handleRadioChange(event)">
+            None
           </label>
           <label>
-              <input type="radio" name="options" value="Profit" onclick="handleRadioChange(event)"> Profit
+            <input type="radio" name="options" value="Capture" onclick="handleRadioChange(event)">
+            By Capture
           </label>
           <label>
-              <input type="radio" name="options" value="Stock" onclick="handleRadioChange(event)"> Fish Stock
+              <input type="radio" name="options" value="Profit" onclick="handleRadioChange(event)"> By Profit
+          </label>
+          <label>
+              <input type="radio" name="options" value="Stock" onclick="handleRadioChange(event)"> By Fish Stock
+          </label>
+          <h3>Filter by objective:</h3>
+          <label>
+            <input type="radio" name="filterOptions" checked value="None" id="defaultFilterOption" onclick="handleRadioFilterChange(event)">
+            None
+          </label>
+          <label>
+            <input type="radio" name="filterOptions" value="Capture" onclick="handleRadioFilterChange(event)">
+            Capture
+          </label>
+          <label>
+            <input type="radio" name="filterOptions" value="Profit" onclick="handleRadioFilterChange(event)">
+            Profit
           </label>
       </div>
       <div class="rankingDiv">
@@ -210,6 +229,7 @@
 
     var currentId = -1;
     var currentCategory = "Capture";
+    var currentFilter = "None";
     var currentGamePoints = {
       Capture: {},
       Profit: {}
@@ -235,6 +255,7 @@
 
     window.onload = function() {
       document.getElementById('defaultOption').checked = true;
+      document.getElementById('defaultFilterOption').checked = true;
     };
 
     //************************************************//
@@ -289,7 +310,7 @@
           });
 
           // draw ranking charts
-          drawRankings("Capture");
+          drawRankings(currentCategory,currentFilter);
 
           // whisker boxes
           stats.Capture = {
@@ -579,7 +600,7 @@
         });
 
         //update rankings;
-        drawRankings(currentCategory);
+        drawRankings(currentCategory, currentFilter);
 
         // update whiskerBox
         drawWhisters()
@@ -658,18 +679,22 @@
   function handleRadioChange(event) {
     const selectedValue = event.target.value;
     currentCategory = selectedValue;
-    drawRankings(selectedValue);
-   
+    drawRankings(currentCategory, currentFilter);
   }
 
-  function drawRankings(sortCategory){
+  function handleRadioFilterChange(event) {
+    const selectedValue = event.target.value;
+    currentFilter = selectedValue;
+    drawRankings(currentCategory, currentFilter);
+  }
+
+  function drawRankings(sortCategory, filter){
 
     let sortedLabels;
     let sortedTotalCaptures;
     let sortedTotalProfits;
     let sortedFinalStocks;
     let sortedObjectives;
-
 
     if (rankingChart) {
       rankingChart.destroy();
@@ -679,13 +704,21 @@
 
     switch (sortCategory){
       case 'Capture':
-      sortedGameList = [...dataBase.players].sort((a, b) => a.captureRank - b.captureRank);
+        sortedGameList = [...dataBase.players].sort((a, b) => a.captureRank - b.captureRank);
         break;
       case 'Profit':
-      sortedGameList = [...dataBase.players].sort((a, b) => a.profitRank - b.profitRank);
-      break;
+        sortedGameList = [...dataBase.players].sort((a, b) => a.profitRank - b.profitRank);
+        break;
+      case 'Stock':
+        sortedGameList = [...dataBase.players].sort((a, b) => a.finalStockRank - b.finalStockRank);
+        break;
       default:
-      sortedGameList = [...dataBase.players].sort((a, b) => a.finalStockRank - b.finalStockRank);
+      sortedGameList = [...dataBase.players];
+    }
+
+    console.log(filter);
+    if (filter != "None"){
+      sortedGameList = sortedGameList.filter(el => el.objective === filter);
     }
 
     const highLightIndex = sortedGameList.map(el => el.id).findIndex(el => el == currentId); // == because there is a type conversion issue. To be fixed 
@@ -697,10 +730,11 @@
     sortedLabels = sortedGameList.map(gameData => {
       let lbl = gameData.username;
       if (simulationCounters[gameData.username]>1){
-        lbl += "#"+gameData.simulationNumber;
+        lbl += " #"+gameData.simulationNumber;
       }
       return lbl;
     });
+
 
     sortedTotalCaptures = sortedGameList.map(player => player.total_capture);
     sortedTotalProfits = sortedGameList.map(player => player.total_profit);
@@ -713,110 +747,7 @@
 
     const ctxRankingChart = document.getElementById('RankingChart').getContext('2d');
     
-
-    const zoomOptions = {
-  limits: {
-    x: {min: -200, max: 200, minRange: 50},
-    y: {min: -200, max: 200, minRange: 50}
-  },
-  pan: {
-    enabled: true,
-    mode: 'xy',
-  },
-  zoom: {
-    wheel: {
-      enabled: true,
-    },
-    pinch: {
-      enabled: true
-    },
-    mode: 'xy',
-    onZoomComplete({chart}) {
-      chart.update('none');
-    }
-  }
-};
-
-function generatePoints(count) {
-    const points = [];
-    let min = -100;
-    let max = 100;
-  
-    for (let i = 0; i < count; i++) {
-        // Génère une valeur aléatoire entre min et max
-        //const point = Math.floor(Math.random() * (max - min + 1)) + min;
-        const point = [Math.floor(Math.random() * (max - min + 1)) + min, Math.floor(Math.random() * (max - min + 1)) + min];
-        points.push(point);
-    }
-    return points;
-}
-
-const scaleOpts = {
-  reverse: true,
-  ticks: {
-    callback: (val, index, ticks) => index === 0 || index === ticks.length - 1 ? null : val,
-  },
-  grid: {
-    borderColor: 'grey',
-    color: 'rgba( 0, 0, 0, 0.1)',
-  },
-  title: {
-    display: true,
-    text: (ctx) => ctx.scale.axis + ' axis',
-  }
-};
-
-// const NUMBER_CFG = {count: 20, min: -100, max: 100};
-const data = {
-  datasets: [{
-    label: 'My First dataset',
-    borderColor: 'red',
-    backgroundColor: 'red',
-    pointBorderColor: 'red',
-    pointBackgroundColor: 'red',
-    pointBorderWidth: 1,
-    data: generatePoints(20),
-  }, {
-    label: 'My Second dataset',
-    borderColor: 'blue',
-    backgroundColor: 'blue',
-    pointBorderColor: 'blue',
-    pointBackgroundColor: 'blue',
-    pointBorderWidth: 1,
-    data: generatePoints(20),
-  }]
-};
-
-const scales = {
-  x: {
-    position: 'top',
-  },
-  y: {
-    position: 'right',
-  },
-};
-Object.keys(scales).forEach(scale => Object.assign(scales[scale], scaleOpts));
-
-
-
-rankingChart = new Chart(ctxRankingChart, {
-  type: 'scatter',
-  data: data,
-  options: {
-    scales: scales,
-    plugins: {
-      zoom: zoomOptions,
-      title: {
-        display: true,
-        position: 'bottom',  
-      }
-    },
-  }});
-
-
-
-
-   /* rankingChart = new Chart(ctxRankingChart, {
+    rankingChart = new Chart(ctxRankingChart, {
         type: 'bar',
         data: {
             labels: sortedLabels,  
@@ -848,11 +779,12 @@ rankingChart = new Chart(ctxRankingChart, {
             ]
         },
         options: {
-            // responsive: true,
+            //responsive: true,
             scales: {
                 x: {
                     // stacked: false,
                     type: 'category',
+                    min: 0, max: 100,
                     // min: 5,
                     // max: 11,
                     // grid: {
@@ -961,7 +893,9 @@ rankingChart = new Chart(ctxRankingChart, {
             }
         }
         
-    });*/
+    });
+   
+
   }
 
 
@@ -983,302 +917,145 @@ rankingChart = new Chart(ctxRankingChart, {
     const ranges = computeChartYlimits(stats.Capture.capture.concat(stats.Profit.capture),
                                       stats.Capture.profit.concat(stats.Profit.profit),
                                       stats.Capture.finalStock.concat(stats.Profit.finalStock));
-
-  
-  //   const x = stats.Capture.capture.map(el => 'Objective: capture')
-  //             .concat(stats.Profit.capture.map(el => 'Objective: profit'));
-    
  
-  //   let traceCapture = {
+    let traceCapture = {
 
-  //     y: renormalize(stats.Capture.capture.concat(stats.Profit.capture)),
-  //     x: x,
-  //     name: 'capture',
-  //     marker: {color: captureColor},
-  //     type: 'box',
-  //     boxmean: true
-  //   };
-
-
-  //   let traceProfit = {
-  //     y: renormalize(stats.Capture.profit.concat(stats.Profit.profit)),
-  //     x: x,
-  //     name: 'profit',
-  //     marker: {color: profitColor},
-  //     type: 'box'
-  //   };
-
-
-  //   let traceFinalStock = {
-  //     y: renormalize(stats.Capture.finalStock.concat(stats.Profit.finalStock)), 
-  //     x: x,
-  //     name: 'final stock',
-  //     marker: {color: finalStockColor},
-  //     type: 'box'
-  //   };
-
-  //   function calculateMean(data) {
-  //     const sum = data.reduce((acc, val) => acc + val, 0);
-  //     return sum / data.length;
-  //   }
-
-  //   const traceMean = {
-  //   x: ['Objective: capture','Objective: capture','Objective: capture',
-  //      'Objective: profit','Objective: profit','Objective: profit'],
-  //   y: [40, 34, 60,70,10,20],
-  //  // y: [calculateMean(stats.Capture.capture), calculateMean(stats.Capture.profit),calculateMean(stats.Capture.finalStock)],
-  //   mode: 'markers',
-  //   name:  ['Objective: capture','Objective: capture','Objective: capture',
-  //       'Objective: profit','Objective: profit','Objective: profit'],//'Average',
-  //   marker: {
-  //     color: 'purple',   
-  //     size: 12,          
-  //     symbol: 'circle'
-  //   },
-  //   type: 'scatter'
-  // };
-
-  //   var data = [traceCapture, traceProfit, traceFinalStock, traceMean];
-
-  //   var layout = {
-
-  //     yaxis: {
-  //       title: 'Value (%max)',
-  //       range: [-20, 100],
-  //       zeroline: true
-  //     },
-  //     boxmode: 'group'
-  //   };
-
-  //   Plotly.newPlot('WhiskerChart', data, layout, { displayModeBar: false });
-
-
-  // const x = stats.Capture.capture.map(el => 'Objective: capture')
-              // .concat(stats.Profit.capture.map(el => 'Objective: profit'));
-    
- 
-  let traceCapture = {
-
-    y: stats.Capture.capture.map(el => el*100/ranges.capture.max),
-    name: 'capture',
-    marker: {color: captureColor},
-    type: 'box',
-    boxmean: true
-  };
-
-
-  let traceProfit = {
-    y: stats.Capture.profit.map(el => el*100/ranges.profit.max),
-    name: 'profit',
-    marker: {color: profitColor},
-    type: 'box',
-    boxmean: true
-  };
-
-
-  let traceFinalStock = {
-    y: stats.Capture.finalStock.map(el => el*100/ranges.finalStock.max), 
-    name: 'final stock',
-    marker: {color: finalStockColor},
-    type: 'box',
-    boxmean: true
-  };
-
-  let data;
-
-  if (currentGamePoints.Capture.capture){
-    let traceMean = {
-      x: ['capture','profit','final stock'],
-      y: [currentGamePoints.Capture.capture/ranges.capture.max*100, currentGamePoints.Capture.profit/ranges.profit.max*100, 
-          currentGamePoints.Capture.finalStock/ranges.finalStock.max*100],
-      mode: 'markers',
-      name:  'Current game',
-      marker: {
-        color: highlightColor,   
-        size: 12,          
-        symbol: 'circle'
-      },
-      type: 'scatter'
-    };
-
-    data = [traceCapture, traceProfit, traceFinalStock, traceMean];
-  }else{
-    data = [traceCapture, traceProfit, traceFinalStock];
-  }
-
-  
-
-
-  let layout = {
-    yaxis: {
-      title: 'Value (%max)',
-      range: [-20, 100],
-      zeroline: true
-    },
-    title: {
-      text: 'Objective: capture'
-    },
-    showlegend: false,
-    paper_bgcolor: 'lightblue',
-    plot_bgcolor: 'lightblue',
-  };
-
-  Plotly.newPlot('WhiskerChartCapture', data, layout, { displayModeBar: false });
-
-  // 2nd whisker
-
-  traceCapture = {
-    y: stats.Profit.capture.map(el => el*100/ranges.capture.max),
-    name: 'capture',
-    marker: {color: captureColor},
-    type: 'box',
-    boxmean: true
+      y: stats.Capture.capture.map(el => el*100/ranges.capture.max),
+      name: 'capture',
+      marker: {color: captureColor},
+      type: 'box',
+      boxmean: true
     };
 
 
-  traceProfit = {
-    y: stats.Profit.profit.map(el => el*100/ranges.profit.max),
-    name: 'profit',
-    marker: {color: profitColor},
-    type: 'box',
-    boxmean: true
+    let traceProfit = {
+      y: stats.Capture.profit.map(el => el*100/ranges.profit.max),
+      name: 'profit',
+      marker: {color: profitColor},
+      type: 'box',
+      boxmean: true
     };
 
 
-  traceFinalStock = {
-    y: stats.Profit.finalStock.map(el => el*100/ranges.finalStock.max), 
-    name: 'final stock',
-    marker: {color: finalStockColor},
-    type: 'box',
-    boxmean: true
-  };
-
-  if (currentGamePoints.Profit.capture){
-    let traceMean = {
-      x: ['capture','profit','final stock'],
-      y: [currentGamePoints.Profit.capture/ranges.capture.max*100, currentGamePoints.Profit.profit/ranges.profit.max*100, 
-          currentGamePoints.Profit.finalStock/ranges.finalStock.max*100],
-      mode: 'markers',
-      name:  'Current game',
-      marker: {
-        color: highlightColor,   
-        size: 12,          
-        symbol: 'circle'
-      },
-      type: 'scatter'
+    let traceFinalStock = {
+      y: stats.Capture.finalStock.map(el => el*100/ranges.finalStock.max), 
+      name: 'final stock',
+      marker: {color: finalStockColor},
+      type: 'box',
+      boxmean: true
     };
 
-    data = [traceCapture, traceProfit, traceFinalStock, traceMean];
-  }else{
-    data = [traceCapture, traceProfit, traceFinalStock];
-  }
+    let data;
 
-  layout = {
-    yaxis: {
-      title: 'Value (%max)',
-      range: [-20, 100],
-      zeroline: true,
-      showticklabels: false, 
-    showline: false,       
-    title: '' 
-    },
-    title: {
-      text: 'Objective: profit'
-    },
-    paper_bgcolor: 'lightblue',
-    plot_bgcolor: 'lightblue',
-    showlegend: false,
-  };
-
-  Plotly.newPlot('WhiskerChartProfit', data, layout, { displayModeBar: false });
-
-
-  console.log(currentGamePoints);
-
-
-/*
-    whiskerChart = new Chart(ctxWhiskerChart, {
-        type: 'boxplot',
-        data: boxplotData,
-        options: {
-            scales: {
-                x: {
-                    stacked: false,
-                    grid: {
-                        offset: true 
-                    },
-                    barPercentage: 0.5,
-                    categoryPercentage: 0.8,
-                    title: {
-                        display: true,
-                        text: 'Player IDs'
-                    }
-                },
-                'y-capture': {
-                    beginAtZero: false,  
-                    min: ranges.capture.min,  
-                    max: ranges.capture.max, 
-                    title: {
-                        display: true,
-                        text: 'Total Capture (tons)',
-                        color: captureColor
-                    },
-                    ticks: {
-                        color: captureColor
-                    },
-                    position: 'left'
-                },
-                'y-profit': {
-                    beginAtZero: false,  
-                    min: ranges.profit.min,  
-                    max: ranges.profit.max,  
-                      
-                    title: {
-                        display: true,
-                        text: 'Total Profit ($)',
-                        color: profitColor
-                    },
-                    ticks: {
-                        color: profitColor
-                    },
-                    position: 'right',  
-                    grid: {
-                        drawOnChartArea: false  
-                    }
-                },
-                'y-stock': {
-                    beginAtZero: false,  
-                    min: ranges.finalStock.min,  
-                    max: ranges.finalStock.max,
-                      
-                    title: {
-                        display: true,
-                        text: 'Fish stock (Tons)',
-                        color: finalStockColor
-                    },
-                    ticks: {
-                        color: finalStockColor,
-                    },
-                    position: 'right',  
-                    grid: {
-                        drawOnChartArea: false  
-                    }
-                }
-            },
-            // layout: {
-            //     padding: {
-            //         left: 100, // Espacement interne pour le rendu de la bordure gauche
-            //         right: 100 // Espacement interne pour le rendu de la bordure droite
-            //     }
-            // },
-            //barThickness: 20, // Ajuste la largeur des barres
-            maxBarThickness: 40, // Définit la largeur maximale des barres
-            // categoryPercentage: 0.3, // Réduit l'espace réservé pour chaque groupe
-            // barPercentage: 0.3
+    if (currentGamePoints.Capture.capture){
+      let traceMean = {
+        x: ['capture','profit','final stock'],
+        y: [currentGamePoints.Capture.capture/ranges.capture.max*100, currentGamePoints.Capture.profit/ranges.profit.max*100, 
+            currentGamePoints.Capture.finalStock/ranges.finalStock.max*100],
+        mode: 'markers',
+        name:  'Current game',
+        marker: {
+          color: highlightColor,   
+          size: 12,          
+          symbol: 'circle'
         },
-    });*/
+        type: 'scatter'
+      };
+
+      data = [traceCapture, traceProfit, traceFinalStock, traceMean];
+    }else{
+      data = [traceCapture, traceProfit, traceFinalStock];
+    }
 
   
+
+
+    let layout = {
+      yaxis: {
+        title: 'Value (%max)',
+        range: [-20, 100],
+        zeroline: true
+      },
+      title: {
+        text: 'Objective: capture'
+      },
+      showlegend: false,
+      paper_bgcolor: 'lightblue',
+      plot_bgcolor: 'lightblue',
+    };
+
+    Plotly.newPlot('WhiskerChartCapture', data, layout, { displayModeBar: false });
+
+    // 2nd whisker
+
+    traceCapture = {
+      y: stats.Profit.capture.map(el => el*100/ranges.capture.max),
+      name: 'capture',
+      marker: {color: captureColor},
+      type: 'box',
+      boxmean: true
+      };
+
+
+    traceProfit = {
+      y: stats.Profit.profit.map(el => el*100/ranges.profit.max),
+      name: 'profit',
+      marker: {color: profitColor},
+      type: 'box',
+      boxmean: true
+      };
+
+
+    traceFinalStock = {
+      y: stats.Profit.finalStock.map(el => el*100/ranges.finalStock.max), 
+      name: 'final stock',
+      marker: {color: finalStockColor},
+      type: 'box',
+      boxmean: true
+    };
+
+    if (currentGamePoints.Profit.capture){
+      let traceMean = {
+        x: ['capture','profit','final stock'],
+        y: [currentGamePoints.Profit.capture/ranges.capture.max*100, currentGamePoints.Profit.profit/ranges.profit.max*100, 
+            currentGamePoints.Profit.finalStock/ranges.finalStock.max*100],
+        mode: 'markers',
+        name:  'Current game',
+        marker: {
+          color: highlightColor,   
+          size: 12,          
+          symbol: 'circle'
+        },
+        type: 'scatter'
+      };
+
+      data = [traceCapture, traceProfit, traceFinalStock, traceMean];
+    }else{
+      data = [traceCapture, traceProfit, traceFinalStock];
+    }
+
+    layout = {
+      yaxis: {
+        title: 'Value (%max)',
+        range: [-20, 100],
+        zeroline: true,
+        showticklabels: false, 
+      showline: false,       
+      title: '' 
+      },
+      title: {
+        text: 'Objective: profit'
+      },
+      paper_bgcolor: 'lightblue',
+      plot_bgcolor: 'lightblue',
+      showlegend: false,
+    };
+
+    Plotly.newPlot('WhiskerChartProfit', data, layout, { displayModeBar: false });
+
+
+    console.log(currentGamePoints);
+
 
   }
 
