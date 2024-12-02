@@ -7,13 +7,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
   <style>
     body {
-      margin: 0;
+      max-width: 2048px;
+      margin: 0 auto;
       height: 100vh;
       display: flex;
       flex-direction: column;
       font-family: 'Roboto', sans-serif;
       background-color: #f9f9f9;
       color: #333;
+  
     }
     h1, h3 {
       color: #004d7a;
@@ -30,11 +32,17 @@
       gap: 20px;
     }
 
+    .comparisonCharts {
+      height: 85%; 
+    }
+
+
     .buttonPanel{
       display: flex;
       flex: 0.5;
       flex-direction: column;
       gap: 10px;
+      height: 100%;
     }
     .buttonPanel label {
       margin-bottom: 5px;
@@ -44,6 +52,7 @@
       border-radius: 8px;
       padding: 20px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      height: 100%;
     }
     .subWhiskerDiv{
       display: flex;
@@ -117,6 +126,8 @@
     }
     canvas {
       border-radius: 8px;
+      height: 100%;
+      display: block;
     }
     .captureObjective {
       color: rgb(75, 192, 192); 
@@ -863,7 +874,7 @@
                     },
                     title: {
                         display: true,
-                        text: 'Player IDs'
+                        text: 'Player Ids',
                     }
                 },
                 'y-capture': {
@@ -967,9 +978,6 @@
     if (whiskerChart) {
       whiskerChart.destroy();
     }
-
-    const playerData = document.getElementById('playerData');
-    playerData.textContent = 'trucAB';
 
     const ranges = computeChartYlimits(stats.Capture.capture.concat(stats.Profit.capture),
                                       stats.Capture.profit.concat(stats.Profit.profit),
