@@ -197,10 +197,8 @@
       <div class="rankingDiv">
         <div class="chartTitle">Rankings</div>
         <div class="chartDiv">
-        <!--div style="width: 500px; overflow-x: auto;"-->
           <canvas id="RankingChart" class="chart"></canvas>
         </div>
-        <!--/div-->  
       </div>
       <!-- canvas id="WhiskerChart" class="chart"></canvas-->
       <div class="whiskerDiv">
@@ -396,7 +394,7 @@
             finalStock: dataBase.players.filter(el => el.objective === "Profit").map(el => el.final_fish_pop)
           };
 
-          drawWhisters();
+          drawWhiskers();
 
           const urlParams = new URLSearchParams(window.location.search);
           const autoSelectId = urlParams.get('autoSelectId');
@@ -675,7 +673,7 @@
         drawRankings(currentCategory, currentFilter);
 
         // update whiskerBox
-        drawWhisters()
+        drawWhiskers()
 
       } else {
         document.getElementById('playerData').textContent = '';
@@ -1004,7 +1002,7 @@
 
 
 
-  function drawWhisters(){
+  function drawWhiskers(){
 
     if (whiskerChart) {
       whiskerChart.destroy();
@@ -1070,7 +1068,14 @@
       yaxis: {
         title: 'Value (%max)',
         range: [-20, 100],
-        zeroline: true
+        zeroline: true,
+        ticks: {
+                        color: profitColor
+                    },
+                    position: 'right',  
+                    grid: {
+                        drawOnChartArea: false  
+                    }
       },
       title: {
         text: 'Objective: capture'
