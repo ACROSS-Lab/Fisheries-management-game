@@ -27,6 +27,10 @@
       border-radius: 8px;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
+    .comparison {
+      margin-bottom: 0px;
+    }
+
     .comparisonCharts, .player {
       display: flex;
       gap: 20px;
@@ -814,6 +818,32 @@
     const ranges = computeChartYlimits(sortedTotalCaptures, sortedTotalProfits, sortedFinalStocks)
 
     const ctxRankingChart = document.getElementById('RankingChart').getContext('2d');
+
+    const dynamicLabelColorPlugin = {
+      id: 'dynamicLabelColorPlugin',
+      afterUpdate(chart) {
+        const xScale = chart.scales.x; 
+        const visibleRange = xScale.getUserBounds(); 
+        
+        const minIndex = Math.max(0, Math.floor(visibleRange.min));
+        const maxIndex = Math.min(chart.data.labels.length - 1, Math.ceil(visibleRange.max));
+
+        // Recompute colors of visible ticks
+        const newTickColors = xScale.ticks.map((tick) => {
+          const actualIndex = tick.value;
+          return highLightIndex >= 0 && actualIndex === highLightIndex
+            ? highlightColor
+            : sortedObjectives[actualIndex] === "Capture"
+            ? captureColor
+            : profitColor;
+        });
+
+        // Apply tick colors
+        xScale.options.ticks.color = (context) => {
+          return newTickColors[context.index];
+        };
+      }
+    };
     
     rankingChart = new Chart(ctxRankingChart, {
         type: 'bar',
@@ -859,15 +889,15 @@
                     //     offset: true 
                     // },
                     ticks: {
-                      color: function(context) {
-                        if (highLightIndex >= 0 && context.index === highLightIndex) {
-                          return highlightColor;
-                        } 
-                        if (sortedObjectives[context.index] === "Capture"){
-                          return captureColor;
-                        }
-                        return profitColor;
-                      },
+                      // color: function(context) {
+                      //   if (highLightIndex >= 0 && context.index === highLightIndex) {
+                      //     return highlightColor;
+                      //   } 
+                      //   if (sortedObjectives[context.index] === "Capture"){
+                      //     return captureColor;
+                      //   }
+                      //   return profitColor;
+                      // },
                       align: 'center',
                       maxRotation: 90, 
                       autoSkip: false
@@ -959,7 +989,8 @@
                   }
               }
             }
-        }
+        },
+        plugins: [dynamicLabelColorPlugin]
         
     });
    
